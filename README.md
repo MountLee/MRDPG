@@ -1,7 +1,7 @@
 # MRDPG
 This repository contains code and data used in the paper *Multilayer Random Dot Product Graphs: Dynamic, Nonparametric Estimation and Online Change Point Detection* by Fan Wang, Wanshan Li, Oscar Hernan Madrid Padilla, Yi Yu, and Alessandro Rinaldo.
 
-All experiments and analysis are conducted in R.
+All experiments and analysis are conducted in R (version >= 4.1).
 
 ### Dependencies
 Some R-packages are required to reproduce all results. To install them, one can run the following lines:
