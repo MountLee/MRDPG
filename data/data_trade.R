@@ -1,4 +1,4 @@
-
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 library("rTensor")
 library("STATSVD")
@@ -14,8 +14,7 @@ library(STATSVD)
 library(devtools)
 library(gStream)
 library(changepoints)
-source("/Users/chris/MRDPG/tensor_functions.R")
-source("/Users/chris/MRDPG/cpd_MRDPG_functions.R")
+source("tensor_functions.R")
 
 library(ggplot2)
 library(tictoc)
@@ -23,7 +22,7 @@ library(tictoc)
 
 
 require(data.table)
-data_whole = fread("/Users/chris/MRDPG/Trade_DetailedTradeMatrix_E_All_Data.csv", header = T)
+data_whole = fread("Trade_DetailedTradeMatrix_E_All_Data.csv", header = T)
 
 data_whole = as.matrix(data_whole)
 unique(data_whole[, 8])

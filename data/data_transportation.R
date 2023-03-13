@@ -1,3 +1,4 @@
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 library("rTensor")
 library("STATSVD")
@@ -15,30 +16,31 @@ library(gStream)
 library(changepoints)
 
 
-source("/Users/chris/MRDPG/tensor_functions.R")
-source("/Users/chris/MRDPG/cpd_MRDPG_functions.R")
+source("tensor_functions.R")
 
 library(ggplot2)
 library(tictoc)
 
 
+help(paste)
 
+path = ""
 
-data_whole_22 = read.csv("/Users/chris/MRDPG/Air Transportation_2022.csv", header = T) 
+data_whole_22 = read.csv(paste(c(path, "Air Transportation_2022.csv"), collapse =  ""), header = T) 
 data_whole_22$MONTH  = 202200 + data_whole_22$MONTH 
-data_whole_21 = read.csv("/Users/chris/MRDPG/Air Transportation_2021.csv", header = T) 
+data_whole_21 = read.csv(paste(c(path, "Air Transportation_2021.csv"), collapse =  ""), header = T) 
 data_whole_21$MONTH  = 202100 + data_whole_21$MONTH
-data_whole_20 = read.csv("/Users/chris/MRDPG/Air Transportation_2020.csv", header = T) 
+data_whole_20 = read.csv(paste(c(path, "Air Transportation_2020.csv"), collapse =  ""), header = T) 
 data_whole_20$MONTH  = 202000 + data_whole_20$MONTH
-data_whole_19 = read.csv("/Users/chris/MRDPG/Air Transportation_2019.csv", header = T) 
+data_whole_19 = read.csv(paste(c(path, "Air Transportation_2019.csv"), collapse =  ""), header = T) 
 data_whole_19$MONTH  = 201900 + data_whole_19$MONTH
-data_whole_18 = read.csv("/Users/chris/MRDPG/Air Transportation_2018.csv", header = T) 
+data_whole_18 = read.csv(paste(c(path, "Air Transportation_2018.csv"), collapse =  ""), header = T) 
 data_whole_18$MONTH  = 201800 + data_whole_18$MONTH
-data_whole_17 = read.csv("/Users/chris/MRDPG/Air Transportation_2017.csv", header = T) 
+data_whole_17 = read.csv(paste(c(path, "Air Transportation_2017.csv"), collapse =  ""), header = T) 
 data_whole_17$MONTH  = 201700 + data_whole_17$MONTH
-data_whole_16 = read.csv("/Users/chris/MRDPG/Air Transportation_2016.csv", header = T) 
+data_whole_16 = read.csv(paste(c(path, "Air Transportation_2016.csv"), collapse =  ""), header = T) 
 data_whole_16$MONTH  = 201600 + data_whole_16$MONTH
-data_whole_15 = read.csv("/Users/chris/MRDPG/Air Transportation_2015.csv", header = T) 
+data_whole_15 = read.csv(paste(c(path, "Air Transportation_2015.csv"), collapse =  ""), header = T) 
 data_whole_15$MONTH  = 201500 + data_whole_15$MONTH
 
 data_whole = rbind(data_whole_22,data_whole_21,  data_whole_20, data_whole_19, data_whole_18, data_whole_17, data_whole_16, data_whole_15)
@@ -55,7 +57,7 @@ AIRLINE = AIRLINE_sort$value[order(AIRLINE_sort $lengths, decreasing = T)[1:4]]
 #19790  "Delta Air Lines Inc.: DL"
 #20107  "Federal Express Corporation: FX"
 
-data_airport_id = read.csv("/Users/chris/MRDPG/L_AIRPORT_ID.csv", header = T) 
+data_airport_id = read.csv(paste(c(path, "L_AIRPORT_ID.csv"), collapse =  ""), header = T) 
 
 
 ORIGIN_AIRPORT = rle(sort(data_whole[,2]))
