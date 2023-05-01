@@ -3,29 +3,29 @@
 cpd_sbm <- function(TT, cp_truth, n_list, L_list, rand_pos = FALSE, 
                     B = 100, N_MC = 100, verbose_freq = 10){
 
-  # type_I_error = array(NA, dim=c(length(n_list),  length(L_list)))
-  # type_II_error = array(NA, dim=c(length(n_list), length(L_list)))
-  # run_length = array(NA, dim=c(length(n_list), length(L_list)))
-  # 
-  # type_I_error_thpca = array(NA, dim=c(length(n_list),  length(L_list)))
-  # type_II_error_thpca = array(NA, dim=c(length(n_list), length(L_list)))
-  # run_length_thpca = array(NA, dim=c(length(n_list), length(L_list)))
-  # 
-  # type_I_error_thpca_r1 = array(NA, dim=c(length(n_list),  length(L_list)))
-  # type_II_error_thpca_r1 = array(NA, dim=c(length(n_list), length(L_list)))
-  # run_length_thpca_r1 = array(NA, dim=c(length(n_list), length(L_list)))
-  # 
-  # type_I_error_uase = array(NA, dim=c(length(n_list),  length(L_list)))
-  # type_II_error_uase = array(NA, dim=c(length(n_list), length(L_list)))
-  # run_length_uase = array(NA, dim=c(length(n_list), length(L_list)))
+  type_I_error = array(NA, dim=c(length(n_list),  length(L_list)))
+  type_II_error = array(NA, dim=c(length(n_list), length(L_list)))
+  run_length = array(NA, dim=c(length(n_list), length(L_list)))
+
+  type_I_error_thpca = array(NA, dim=c(length(n_list),  length(L_list)))
+  type_II_error_thpca = array(NA, dim=c(length(n_list), length(L_list)))
+  run_length_thpca = array(NA, dim=c(length(n_list), length(L_list)))
+
+  type_I_error_thpca_r1 = array(NA, dim=c(length(n_list),  length(L_list)))
+  type_II_error_thpca_r1 = array(NA, dim=c(length(n_list), length(L_list)))
+  run_length_thpca_r1 = array(NA, dim=c(length(n_list), length(L_list)))
+
+  type_I_error_uase = array(NA, dim=c(length(n_list),  length(L_list)))
+  type_II_error_uase = array(NA, dim=c(length(n_list), length(L_list)))
+  run_length_uase = array(NA, dim=c(length(n_list), length(L_list)))
   
   type_I_error_multi = array(NA, dim=c(length(n_list),  length(L_list)))
   type_II_error_multi = array(NA, dim=c(length(n_list), length(L_list)))
   run_length_multi = array(NA, dim=c(length(n_list), length(L_list)))
   
-  # type_I_error_knn = array(NA, dim=c(length(n_list),  length(L_list)))
-  # type_II_error_knn = array(NA, dim=c(length(n_list), length(L_list)))
-  # run_length_knn = array(NA, dim=c(length(n_list), length(L_list)))
+  type_I_error_knn = array(NA, dim=c(length(n_list),  length(L_list)))
+  type_II_error_knn = array(NA, dim=c(length(n_list), length(L_list)))
+  run_length_knn = array(NA, dim=c(length(n_list), length(L_list)))
   
   record = array("", dim=c(length(n_list),  length(L_list)))
   
@@ -40,33 +40,33 @@ cpd_sbm <- function(TT, cp_truth, n_list, L_list, rand_pos = FALSE,
       print(info)
       record[n_index, L_index] = info
       
-      # print("---- hosvd ----")
-      # hosvd_res = hosvd_simulation_sbm(TT, cp_truth, n, L, rank = rep(10, 3), rand_pos, B, N_MC)
-      # type_I_error[n_index, L_index] = hosvd_res[1]
-      # type_II_error[n_index, L_index] = hosvd_res[2]
-      # run_length[n_index, L_index] = hosvd_res[3]
-      # print(hosvd_res)
-      # 
-      # print("---- thpca ----")
-      # thpca_res = thpca_simulation_sbm(TT, cp_truth, n, L, rank = rep(10, 3), rand_pos, B, N_MC)
-      # type_I_error_thpca[n_index, L_index] = thpca_res[1]
-      # type_II_error_thpca[n_index, L_index] = thpca_res[2]
-      # run_length_thpca[n_index, L_index] = thpca_res[3]
-      # print(thpca_res)
-      # 
-      # print("---- thpca rank 1----")
-      # thpca_res_r1 = thpca_simulation_sbm(TT, cp_truth, n, L, rank = rep(1, 3), rand_pos, B, N_MC)
-      # type_I_error_thpca_r1[n_index, L_index] = thpca_res_r1[1]
-      # type_II_error_thpca_r1[n_index, L_index] = thpca_res_r1[2]
-      # run_length_thpca_r1[n_index, L_index] = thpca_res_r1[3]
-      # print(thpca_res_r1)
-      # 
-      # print("---- uase ----")
-      # uase_res = uase_simulation_sbm(TT, cp_truth, n, L, rank = 10, rand_pos, B, N_MC)
-      # type_I_error_uase[n_index, L_index] = uase_res[1]
-      # type_II_error_uase[n_index, L_index] = uase_res[2]
-      # run_length_uase[n_index, L_index]= uase_res[3]
-      # print(uase_res)
+      print("---- hosvd ----")
+      hosvd_res = hosvd_simulation_sbm(TT, cp_truth, n, L, rank = rep(10, 3), rand_pos, B, N_MC)
+      type_I_error[n_index, L_index] = hosvd_res[1]
+      type_II_error[n_index, L_index] = hosvd_res[2]
+      run_length[n_index, L_index] = hosvd_res[3]
+      print(hosvd_res)
+
+      print("---- thpca ----")
+      thpca_res = thpca_simulation_sbm(TT, cp_truth, n, L, rank = rep(10, 3), rand_pos, B, N_MC)
+      type_I_error_thpca[n_index, L_index] = thpca_res[1]
+      type_II_error_thpca[n_index, L_index] = thpca_res[2]
+      run_length_thpca[n_index, L_index] = thpca_res[3]
+      print(thpca_res)
+
+      print("---- thpca rank 1----")
+      thpca_res_r1 = thpca_simulation_sbm(TT, cp_truth, n, L, rank = rep(1, 3), rand_pos, B, N_MC)
+      type_I_error_thpca_r1[n_index, L_index] = thpca_res_r1[1]
+      type_II_error_thpca_r1[n_index, L_index] = thpca_res_r1[2]
+      run_length_thpca_r1[n_index, L_index] = thpca_res_r1[3]
+      print(thpca_res_r1)
+
+      print("---- uase ----")
+      uase_res = uase_simulation_sbm(TT, cp_truth, n, L, rank = 10, rand_pos, B, N_MC)
+      type_I_error_uase[n_index, L_index] = uase_res[1]
+      type_II_error_uase[n_index, L_index] = uase_res[2]
+      run_length_uase[n_index, L_index]= uase_res[3]
+      print(uase_res)
       
       print("---- multiness ----")
       multi_res = multi_simulation_sbm(TT, cp_truth, n, L, rank = 10, rand_pos, B, N_MC)
@@ -75,12 +75,12 @@ cpd_sbm <- function(TT, cp_truth, n_list, L_list, rand_pos = FALSE,
       run_length_multi[n_index, L_index] = multi_res[3]
       print(multi_res)
       
-      # print("---- knn ----")
-      # knn_res = knn_simulation_sbm(TT, cp_truth, n, L, rand_pos, N_MC)
-      # type_I_error_knn[n_index, L_index] = knn_res[1]
-      # type_II_error_knn[n_index, L_index] = knn_res[2]
-      # run_length_knn[n_index, L_index] = knn_res[3]
-      # print(knn_res)
+      print("---- knn ----")
+      knn_res = knn_simulation_sbm(TT, cp_truth, n, L, rand_pos, N_MC)
+      type_I_error_knn[n_index, L_index] = knn_res[1]
+      type_II_error_knn[n_index, L_index] = knn_res[2]
+      run_length_knn[n_index, L_index] = knn_res[3]
+      print(knn_res)
       
       
     }
@@ -88,35 +88,35 @@ cpd_sbm <- function(TT, cp_truth, n_list, L_list, rand_pos = FALSE,
   
   print(record)
   
-  # print("---- hosvd ----")
-  # print(type_I_error)
-  # print(type_II_error)
-  # print(run_length)
-  # 
-  # print("---- thpca ----")
-  # print(type_I_error_thpca)
-  # print(type_II_error_thpca)
-  # print(run_length_thpca)
-  # 
-  # print("---- thpca rank 1----")
-  # print(type_I_error_thpca_r1)
-  # print(type_II_error_thpca_r1)
-  # print(run_length_thpca_r1)
-  # 
-  # print("---- uase ----")
-  # print(type_I_error_uase)
-  # print(type_II_error_uase)
-  # print(run_length_uase)
+  print("---- hosvd ----")
+  print(type_I_error)
+  print(type_II_error)
+  print(run_length)
+
+  print("---- thpca ----")
+  print(type_I_error_thpca)
+  print(type_II_error_thpca)
+  print(run_length_thpca)
+
+  print("---- thpca rank 1----")
+  print(type_I_error_thpca_r1)
+  print(type_II_error_thpca_r1)
+  print(run_length_thpca_r1)
+
+  print("---- uase ----")
+  print(type_I_error_uase)
+  print(type_II_error_uase)
+  print(run_length_uase)
   
   print("---- multiness ----")
   print(type_I_error_multi)
   print(type_II_error_multi)
   print(run_length_multi)
   
-  # print("---- knn ----")
-  # print(type_I_error_knn)
-  # print(type_II_error_knn)
-  # print(run_length_knn)
+  print("---- knn ----")
+  print(type_I_error_knn)
+  print(type_II_error_knn)
+  print(run_length_knn)
 
 }
 
@@ -127,29 +127,29 @@ cpd_sbm <- function(TT, cp_truth, n_list, L_list, rand_pos = FALSE,
 cpd_dirichlet <- function(TT, cp_truth, n_list, L_list, directed = TRUE,
                     B = 100, N_MC = 100, verbose_freq = 10){
   
-  # type_I_error = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # type_II_error = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
-  # run_length = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
-  # 
-  # type_I_error_thpca =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # type_II_error_thpca = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # run_length_thpca =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # 
-  # type_I_error_thpca_r1 =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # type_II_error_thpca_r1 = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # run_length_thpca_r1 =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # 
-  # type_I_error_uase = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # type_II_error_uase = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
-  # run_length_uase = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
+  type_I_error = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  type_II_error = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
+  run_length = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
+
+  type_I_error_thpca =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  type_II_error_thpca = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  run_length_thpca =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+
+  type_I_error_thpca_r1 =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  type_II_error_thpca_r1 = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  run_length_thpca_r1 =  array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+
+  type_I_error_uase = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  type_II_error_uase = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
+  run_length_uase = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
 
   type_I_error_multi = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
   type_II_error_multi = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
   run_length_multi = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
 
-  # type_I_error_knn = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
-  # type_II_error_knn = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
-  # run_length_knn = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
+  type_I_error_knn = array(NA, dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
+  type_II_error_knn = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
+  run_length_knn = array(NA, dim=c(length(n_list_1), length(n_list_2), length(L_list), length(d_list)))
   
   record = array("", dim=c(length(n_list_1),  length(n_list_2), length(L_list), length(d_list)))
   
@@ -173,33 +173,33 @@ cpd_dirichlet <- function(TT, cp_truth, n_list, L_list, directed = TRUE,
           print(info)
           record[n_index_1, n_index_2, L_index, d_index] = info
           
-          # print("---- hosvd ----")
-          # hosvd_res = hosvd_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = rep(10, 3), directed, B, N_MC)
-          # type_I_error[n_index_1, n_index_2, L_index, d_index] = hosvd_res[1]
-          # type_II_error[n_index_1, n_index_2, L_index, d_index] = hosvd_res[2]
-          # run_length[n_index_1, n_index_2, L_index, d_index] = hosvd_res[3]
-          # print(hosvd_res)
-          # 
-          # print("---- thpca ----")
-          # thpca_res = thpca_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = rep(10, 3), directed, B, N_MC)
-          # type_I_error_thpca[n_index_1, n_index_2, L_index, d_index] = thpca_res[1]
-          # type_II_error_thpca[n_index_1, n_index_2, L_index, d_index] = thpca_res[2]
-          # run_length_thpca[n_index_1, n_index_2, L_index, d_index] = thpca_res[3]
-          # print(thpca_res)
-          # 
-          # print("---- thpca rank 1 ----")
-          # thpca_res_r1 = thpca_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = rep(1, 3), directed, B, N_MC)
-          # type_I_error_thpca_r1[n_index_1, n_index_2, L_index, d_index] = thpca_res_r1[1]
-          # type_II_error_thpca_r1[n_index_1, n_index_2, L_index, d_index] = thpca_res_r1[2]
-          # run_length_thpca_r1[n_index_1, n_index_2, L_index, d_index] = thpca_res_r1[3]
-          # print(thpca_res_r1)
-          # 
-          # print("---- uase ----")
-          # uase_res = uase_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = 10, directed, B, N_MC)
-          # type_I_error_uase[n_index_1, n_index_2, L_index, d_index] = uase_res[1]
-          # type_II_error_uase[n_index_1, n_index_2, L_index, d_index] = uase_res[2]
-          # run_length_uase[n_index_1, n_index_2, L_index, d_index]= uase_res[3]
-          # print(uase_res)
+          print("---- hosvd ----")
+          hosvd_res = hosvd_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = rep(10, 3), directed, B, N_MC)
+          type_I_error[n_index_1, n_index_2, L_index, d_index] = hosvd_res[1]
+          type_II_error[n_index_1, n_index_2, L_index, d_index] = hosvd_res[2]
+          run_length[n_index_1, n_index_2, L_index, d_index] = hosvd_res[3]
+          print(hosvd_res)
+
+          print("---- thpca ----")
+          thpca_res = thpca_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = rep(10, 3), directed, B, N_MC)
+          type_I_error_thpca[n_index_1, n_index_2, L_index, d_index] = thpca_res[1]
+          type_II_error_thpca[n_index_1, n_index_2, L_index, d_index] = thpca_res[2]
+          run_length_thpca[n_index_1, n_index_2, L_index, d_index] = thpca_res[3]
+          print(thpca_res)
+
+          print("---- thpca rank 1 ----")
+          thpca_res_r1 = thpca_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = rep(1, 3), directed, B, N_MC)
+          type_I_error_thpca_r1[n_index_1, n_index_2, L_index, d_index] = thpca_res_r1[1]
+          type_II_error_thpca_r1[n_index_1, n_index_2, L_index, d_index] = thpca_res_r1[2]
+          run_length_thpca_r1[n_index_1, n_index_2, L_index, d_index] = thpca_res_r1[3]
+          print(thpca_res_r1)
+
+          print("---- uase ----")
+          uase_res = uase_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = 10, directed, B, N_MC)
+          type_I_error_uase[n_index_1, n_index_2, L_index, d_index] = uase_res[1]
+          type_II_error_uase[n_index_1, n_index_2, L_index, d_index] = uase_res[2]
+          run_length_uase[n_index_1, n_index_2, L_index, d_index]= uase_res[3]
+          print(uase_res)
 
           print("---- multiness ----")
           multi_res = multi_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, rank = 10, directed, B, N_MC)
@@ -208,12 +208,12 @@ cpd_dirichlet <- function(TT, cp_truth, n_list, L_list, directed = TRUE,
           run_length_multi[n_index_1, n_index_2, L_index, d_index] = multi_res[3]
           print(multi_res)
 
-          # print("---- knn ----")
-          # knn_res = knn_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, directed, N_MC)
-          # type_I_error_knn[n_index_1, n_index_2, L_index, d_index] = knn_res[1]
-          # type_II_error_knn[n_index_1, n_index_2, L_index, d_index] = knn_res[2]
-          # run_length_knn[n_index_1, n_index_2, L_index, d_index] = knn_res[3]
-          # print(knn_res)
+          print("---- knn ----")
+          knn_res = knn_simulation_dirichlet(TT, cp_truth, n_1, n_2, L, d, directed, N_MC)
+          type_I_error_knn[n_index_1, n_index_2, L_index, d_index] = knn_res[1]
+          type_II_error_knn[n_index_1, n_index_2, L_index, d_index] = knn_res[2]
+          run_length_knn[n_index_1, n_index_2, L_index, d_index] = knn_res[3]
+          print(knn_res)
 
           
         }
@@ -223,35 +223,35 @@ cpd_dirichlet <- function(TT, cp_truth, n_list, L_list, directed = TRUE,
   
   print(record)
   
-  # print("---- hosvd ----")
-  # print(type_I_error)
-  # print(type_II_error)
-  # print(run_length)
-  # 
-  # print("---- thpca ----")
-  # print(type_I_error_thpca)
-  # print(type_II_error_thpca)
-  # print(run_length_thpca)
-  # 
-  # print("---- thpca rank 1----")
-  # print(type_I_error_thpca_r1)
-  # print(type_II_error_thpca_r1)
-  # print(run_length_thpca_r1)
-  # 
-  # print("---- uase ----")
-  # print(type_I_error_uase)
-  # print(type_II_error_uase)
-  # print(run_length_uase)
+  print("---- hosvd ----")
+  print(type_I_error)
+  print(type_II_error)
+  print(run_length)
+
+  print("---- thpca ----")
+  print(type_I_error_thpca)
+  print(type_II_error_thpca)
+  print(run_length_thpca)
+
+  print("---- thpca rank 1----")
+  print(type_I_error_thpca_r1)
+  print(type_II_error_thpca_r1)
+  print(run_length_thpca_r1)
+
+  print("---- uase ----")
+  print(type_I_error_uase)
+  print(type_II_error_uase)
+  print(run_length_uase)
   
   print("---- multiness ----")
   print(type_I_error_multi)
   print(type_II_error_multi)
   print(run_length_multi)
   
-  # print("---- knn ----")
-  # print(type_I_error_knn)
-  # print(type_II_error_knn)
-  # print(run_length_knn)
+  print("---- knn ----")
+  print(type_I_error_knn)
+  print(type_II_error_knn)
+  print(run_length_knn)
   
 }
 
