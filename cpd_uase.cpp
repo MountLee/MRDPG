@@ -115,8 +115,7 @@ Mat<double> k_unfold_cpp(Cube<double>& a, const uword k){
 double get_D_K_t_cpp(cube P_left,
                       cube P_right,
                       mat Z,
-                      mat Sigma,
-                      const uword cores = 1){
+                      mat Sigma){
   int p, i, k,
   n1 = P_left.n_rows,
   n2 = P_left.n_cols,
@@ -182,6 +181,94 @@ double get_D_K_t_cpp(cube P_left,
 
 
 
+// [[Rcpp::export]]
+double get_D_K_t_ud_cpp(cube P_left,
+                      cube P_right,
+                      mat Z,
+                      mat Sigma){
+
+  /*
+  in the undirected case, X = Y so n1 = n2
+  */
+
+  int p, i, j, k, q, shift,
+    n1 = P_left.n_rows,
+    // n2 = P_left.n_cols,
+    L = P_left.n_slices,
+    M_t = Z.n_rows,
+    n = n1;
+    // n1_n2 = n1 + n2 - 1;
+  
+  double S_tilde_p, 
+    S_tilde_sum = 0.0;
+  
+  
+  rowvec cur_P_sp_left(L), cur_P_sp_right(L);
+  vec  D_K_t_left(M_t),
+      D_K_t_right(M_t),
+      D_K_t_diff(M_t);
+  
+  for (p = 1; p < n; p++){
+    cur_P_sp_left.zeros();
+    cur_P_sp_right.zeros();
+    
+
+    q = floor((n - p) / (2.0 * p));
+
+    S_tilde_p = 0.0 + q * p + std::min(p, n - p - 2 * p * q);
+    S_tilde_sum += S_tilde_p;
+
+    for (i = 0; i < q; i++){
+
+      shift = i * 2 * p;
+
+      for (j = 0; j < p; j++){
+
+        for (k = 0; k < L; k++){
+          cur_P_sp_left[k] += P_left.at(shift + j, shift + j + p, k) / S_tilde_p;
+          cur_P_sp_right[k] += P_right.at(shift + j, shift + j + p, k) / S_tilde_p;
+        }
+
+      }
+      
+    }
+
+    shift = q * 2 * p;
+
+    for (j = 0; j + shift + p < n; j++){
+
+      for (k = 0; k < L; k++){
+        cur_P_sp_left[k] += P_left.at(shift + j, shift + j + p, k) / S_tilde_p;
+        cur_P_sp_right[k] += P_right.at(shift + j, shift + j + p, k) / S_tilde_p;
+      }
+
+    }
+    
+    
+    vec const kernel_left = dmvnrm_arma_fast(Z, cur_P_sp_left, Sigma, false);
+    vec const kernel_right = dmvnrm_arma_fast(Z, cur_P_sp_right, Sigma, false);
+    
+    double factor = S_tilde_p;
+    
+    for (k = 0; k < M_t; k++){
+      D_K_t_left[k] += kernel_left[k] * factor;
+      D_K_t_right[k] += kernel_right[k] * factor;
+    }
+    
+  }
+  
+  for (k = 0; k < M_t; k++){
+    D_K_t_diff[k] = std::abs(D_K_t_left[k] - D_K_t_right[k]) / S_tilde_sum;
+  }
+  
+  return max(D_K_t_diff);
+}
+
+
+
+
+
+
 cube fold_cpp(mat& x, const uword n1, const uword n2, const uword n3){
   cube res = cube(n1, n2, n3);
   for(uword k = 0; k < n1; k++){
@@ -195,7 +282,7 @@ cube fold_cpp(mat& x, const uword n1, const uword n2, const uword n3){
 }
 
 
-
+// [[Rcpp::export]]
 cube uase_cpp(cube& a, uword r){
   
   mat Y = k_unfold_cpp(a, 1);
@@ -229,10 +316,28 @@ cube uase_cpp(cube& a, uword r){
 
 
 
+// [[Rcpp::export]]
+double frobenius_cube_cpp(cube X){
+  const uword L = X.n_slices;
+  double f = 0.0;
+  uword i;
+
+  for (i = 0; i < L; i ++){
+    f += pow(norm(X.slice(i), "fro"), 2);
+  }
+
+  return pow(f, 0.5);
+}
+
+
+
+
+
 
 
 // [[Rcpp::export]]
-vec max_D_s_t_rescale_uase_cpp(field<cube> A_list, double h_kernel, const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+vec max_D_s_t_rescale_uase_cpp(field<cube> A_list, double h_kernel, uword r_hat = 1, const bool directed = true,
+                               const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -300,8 +405,8 @@ vec max_D_s_t_rescale_uase_cpp(field<cube> A_list, double h_kernel, const uword 
         A_bar_left = A_sum_left / n_left;
         A_bar_right = A_sum_right / n_right;
         
-        P_left = uase_cpp(A_bar_left, 10);
-        P_right = uase_cpp(A_bar_right, 10);
+        P_left = uase_cpp(A_bar_left, r_hat);
+        P_right = uase_cpp(A_bar_right, r_hat);
         
         M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 * std::max(n_max, t))), 0.5 * L);
         M_t = std::min(static_cast<int>(M_td), M_up);
@@ -309,8 +414,15 @@ vec max_D_s_t_rescale_uase_cpp(field<cube> A_list, double h_kernel, const uword 
         // each column is a sample
         Z = mat(M_t, L, fill::randu);
         
-        rescale = (1.0/pow(static_cast<double>(s), 0.5) + 1.0/pow(static_cast<double>(t - s), 0.5)) / pow(log(1.0 * std::max(n_max, t)), 0.5);
-        D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma, 1) / rescale;
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(n_max, t + 1)), 0.5);
+        
+        if (directed){
+          D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale;
+        }
+        else{
+          D_K_t(s) = get_D_K_t_ud_cpp(P_left, P_right, Z, Sigma) / rescale;
+        }
+
         // double D_K_t_raw = get_D_K_t_cpp(P_left, P_right, Z, Sigma, 1);
         // D_K_t(s) = D_K_t_raw / rescale;
       }
@@ -329,8 +441,8 @@ vec max_D_s_t_rescale_uase_cpp(field<cube> A_list, double h_kernel, const uword 
 
 
 // [[Rcpp::export]]
-List online_cpd_uase_cpp(field<cube> A_list, double tau_factor, double h_kernel, 
-                   const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+List online_cpd_uase_cpp(field<cube> A_list, double tau_factor, double h_kernel, uword r_hat = 1, const bool directed = true, 
+                         const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -398,8 +510,8 @@ List online_cpd_uase_cpp(field<cube> A_list, double tau_factor, double h_kernel,
         A_bar_left = A_sum_left / n_left;
         A_bar_right = A_sum_right / n_right;
         
-        P_left = uase_cpp(A_bar_left, 10);
-        P_right = uase_cpp(A_bar_right, 10);
+        P_left = uase_cpp(A_bar_left, r_hat);
+        P_right = uase_cpp(A_bar_right, r_hat);
         
         M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 * std::max(n_max, t))), 0.5 * L);
         M_t = std::min(static_cast<int>(M_td), M_up);
@@ -407,8 +519,15 @@ List online_cpd_uase_cpp(field<cube> A_list, double tau_factor, double h_kernel,
         // each column is a sample
         Z = mat(M_t, L, fill::randu);
         
-        rescale = (1.0/pow(static_cast<double>(s), 0.5) + 1.0/pow(static_cast<double>(t - s), 0.5)) / pow(log(1.0 * std::max(n_max, t)), 0.5);
-        D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma, 1) / rescale;
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(n_max, t + 1)), 0.5);
+        
+        if (directed){
+          D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale;
+        }
+        else{
+          D_K_t(s) = get_D_K_t_ud_cpp(P_left, P_right, Z, Sigma) / rescale;
+        }
+        
       }
     }
     
@@ -433,4 +552,292 @@ List online_cpd_uase_cpp(field<cube> A_list, double tau_factor, double h_kernel,
     _["find"] = false
   );
 }
+
+
+
+
+/*
+Fixed latent positions
+*/
+
+
+
+// [[Rcpp::export]]
+vec max_D_s_t_rescale_fixed_uase_cpp(field<cube> A_list, uword r_hat = 1,
+                               const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+  cube A = A_list(0);
+  
+  const uword n1 = A.n_rows;
+  const uword n2 = A.n_cols;
+  const uword L = A.n_slices;
+  const uword TT = A_list.n_elem;
+  
+  const uword t0 = 10;
+  double n_left;
+  double n_right;
+  
+  cube A_sum_left;
+  cube A_sum_right;
+  cube A_bar_left;
+  cube A_bar_right;
+  cube A_sum_left_0;
+  cube A_sum_right_0;
+  
+  cube P_left;
+  cube P_right;
+  
+  vec D_K_t_max_rescale = vec(TT, fill::zeros);
+  double rescale;
+  
+  A_sum_left_0.zeros(n1, n2, L);
+  for (uword i = 0; i < buffer_left; i++){
+    A_sum_left_0 += A_list(i);
+  }
+  A_sum_right_0.zeros(n1, n2, L);
+  A_sum_right_0 += A_list(buffer_left);
+  
+  for (uword t = 1; t < TT; t++){
+    vec D_K_t = vec(t, fill::zeros);
+    
+    if (t > buffer_left){
+      A_sum_right_0 += A_list(t);
+    }
+    
+    if (t - buffer_right < buffer_left){
+      continue;
+    }
+    else{
+      A_sum_left = cube(A_sum_left_0);
+      A_sum_right = cube(A_sum_right_0);
+      
+      for (uword s = buffer_left; s < t - buffer_right - 1; s++){
+        
+        n_left = 0.0 + s + 1.0;
+        n_right = 0.0 + t - s;
+        
+        A_sum_left += A_list(s);
+        A_sum_right -= A_list(s);
+        
+        A_bar_left = A_sum_left / n_left;
+        A_bar_right = A_sum_right / n_right;
+        
+        P_left = uase_cpp(A_bar_left, r_hat);
+        P_right = uase_cpp(A_bar_right, r_hat);
+        
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        
+        D_K_t(s) = frobenius_cube_cpp(P_left - P_right) / rescale;
+      }
+    }
+    
+    D_K_t_max_rescale[t] = max(D_K_t);
+    if (verbose){
+      Rprintf("%i \n", t + 1);
+    }
+  }
+  return D_K_t_max_rescale;
+}
+
+
+
+
+
+// [[Rcpp::export]]
+List online_cpd_fixed_uase_cpp(field<cube> A_list, double tau_factor, uword r_hat = 1,
+                         const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+  cube A = A_list(0);
+  
+  const uword n1 = A.n_rows;
+  const uword n2 = A.n_cols;
+  const uword L = A.n_slices;
+  const uword TT = A_list.n_elem;
+  
+  const uword t0 = 10;
+  double n_left;
+  double n_right;
+  
+  cube A_sum_left;
+  cube A_sum_right;
+  cube A_bar_left;
+  cube A_bar_right;
+  cube A_sum_left_0;
+  cube A_sum_right_0;
+  
+  cube P_left;
+  cube P_right;
+  
+  vec D_K_t_max_rescale = vec(TT, fill::zeros);
+  double rescale;
+  
+  A_sum_left_0.zeros(n1, n2, L);
+  for (uword i = 0; i < buffer_left; i++){
+    A_sum_left_0 += A_list(i);
+  }
+  A_sum_right_0.zeros(n1, n2, L);
+  A_sum_right_0 += A_list(buffer_left);
+  
+  for (uword t = 1; t < TT; t++){
+    vec D_K_t = vec(t, fill::zeros);
+    
+    if (t > buffer_left){
+      A_sum_right_0 += A_list(t);
+    }
+    
+    if (t - buffer_right < buffer_left){
+      continue;
+    }
+    else{
+      A_sum_left = cube(A_sum_left_0);
+      A_sum_right = cube(A_sum_right_0);
+      
+      for (uword s = buffer_left; s < t - buffer_right - 1; s++){
+        
+        n_left = 0.0 + s + 1.0;
+        n_right = 0.0 + t - s;
+        
+        A_sum_left += A_list(s);
+        A_sum_right -= A_list(s);
+        
+        A_bar_left = A_sum_left / n_left;
+        A_bar_right = A_sum_right / n_right;
+        
+        P_left = uase_cpp(A_bar_left, r_hat);
+        P_right = uase_cpp(A_bar_right, r_hat);
+        
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        
+        D_K_t(s) = frobenius_cube_cpp(P_left - P_right) / rescale;
+      }
+    }
+    
+    D_K_t_max_rescale[t] = max(D_K_t);
+    
+    if (verbose){
+      Rprintf("%i \n", t + 1);
+    }
+    
+    if (D_K_t_max_rescale[t] > tau_factor){
+      return List::create( 
+        _["t"] = t + 1,
+        _["D_K_t_max_rescale"] = D_K_t_max_rescale,
+        _["find"] = true
+      );
+    }
+    
+  }
+  return List::create( 
+    _["t"] = TT + 1, 
+    _["D_K_t_max_rescale"] = D_K_t_max_rescale,
+    _["find"] = false
+  );
+}
+
+
+
+
+
+// [[Rcpp::export]]
+double l2_cube_cpp(cube X){
+  const uword L = X.n_slices;
+  double f = 0.0;
+  uword i;
+
+  for (i = 0; i < L; i ++){
+    f += pow(norm(X.slice(i), 2), 2);
+  }
+
+  return pow(f, 0.5);
+}
+
+
+// [[Rcpp::export]]
+List online_cpd_fixed_uase2_cpp(field<cube> A_list, double tau_factor, uword r_hat,
+                         const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+  cube A = A_list(0);
+  
+  const uword n1 = A.n_rows;
+  const uword n2 = A.n_cols;
+  const uword L = A.n_slices;
+  const uword TT = A_list.n_elem;
+  
+  const uword t0 = 10;
+  double n_left;
+  double n_right;
+  
+  cube A_sum_left;
+  cube A_sum_right;
+  cube A_bar_left;
+  cube A_bar_right;
+  cube A_sum_left_0;
+  cube A_sum_right_0;
+  
+  cube P_left;
+  cube P_right;
+  
+  vec D_K_t_max_rescale = vec(TT, fill::zeros);
+  double rescale;
+  
+  A_sum_left_0.zeros(n1, n2, L);
+  for (uword i = 0; i < buffer_left; i++){
+    A_sum_left_0 += A_list(i);
+  }
+  A_sum_right_0.zeros(n1, n2, L);
+  A_sum_right_0 += A_list(buffer_left);
+  
+  for (uword t = 1; t < TT; t++){
+    vec D_K_t = vec(t, fill::zeros);
+    
+    if (t > buffer_left){
+      A_sum_right_0 += A_list(t);
+    }
+    
+    if (t - buffer_right < buffer_left){
+      continue;
+    }
+    else{
+      A_sum_left = cube(A_sum_left_0);
+      A_sum_right = cube(A_sum_right_0);
+      
+      for (uword s = buffer_left; s < t - buffer_right - 1; s++){
+        
+        n_left = 0.0 + s + 1.0;
+        n_right = 0.0 + t - s;
+        
+        A_sum_left += A_list(s);
+        A_sum_right -= A_list(s);
+        
+        A_bar_left = A_sum_left / n_left;
+        A_bar_right = A_sum_right / n_right;
+        
+        P_left = uase_cpp(A_bar_left, r_hat);
+        P_right = uase_cpp(A_bar_right, r_hat);
+        
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        
+        D_K_t(s) = l2_cube_cpp(P_left - P_right) / rescale;
+      }
+    }
+    
+    D_K_t_max_rescale[t] = max(D_K_t);
+    
+    if (verbose){
+      Rprintf("%i \n", t + 1);
+    }
+    
+    if (D_K_t_max_rescale[t] > tau_factor){
+      return List::create( 
+        _["t"] = t + 1,
+        _["D_K_t_max_rescale"] = D_K_t_max_rescale,
+        _["find"] = true
+      );
+    }
+    
+  }
+  return List::create( 
+    _["t"] = TT + 1, 
+    _["D_K_t_max_rescale"] = D_K_t_max_rescale,
+    _["find"] = false
+  );
+}
+
 

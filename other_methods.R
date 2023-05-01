@@ -23,7 +23,7 @@ multiness <- function(A_tensor, rank){
 }
 
 
-max_D_s_t_rescale_multi <- function(A_list, h_kernel = 0.1, rank = 10, verbose = FALSE){
+max_D_s_t_rescale_multi <- function(A_list, h_kernel = 0.1, rank = 10, directed = TRUE, verbose = FALSE){
   n_1 = dim(A_list)[1]
   n_2 = dim(A_list)[2]
   L = dim(A_list)[3]
@@ -58,7 +58,14 @@ max_D_s_t_rescale_multi <- function(A_list, h_kernel = 0.1, rank = 10, verbose =
       # each column is a sample
       Z = matrix(runif(M_t * L, 0, 1), nrow = M_t, ncol = L)
       
-      D_K_t[s] = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / (1/s^0.5 + 1/(t-s)^0.5) / log(max(c(n_1, n_2, t)))^0.5
+      rescale = (1/n_left^0.5 + 1/n_right^0.5) * log(max(c(n_1, n_2, t)))^0.5
+      if (directed){
+        D_K_t[s] = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale
+      }
+      else{
+        D_K_t[s] = get_D_K_t_ud_cpp(P_left, P_right, Z, Sigma) / rescale
+      }
+      
     }
     
     D_K_t_max_rescale[t] = max(D_K_t)
@@ -69,7 +76,7 @@ max_D_s_t_rescale_multi <- function(A_list, h_kernel = 0.1, rank = 10, verbose =
   return(max(D_K_t_max_rescale))
 }
 
-online_cpd_multi <- function(A_list, tau_factor, h_kernel = 0.1, rank = 10, verbose = FALSE){
+online_cpd_multi <- function(A_list, tau_factor, h_kernel = 0.1, rank = 10, directed = TRUE, verbose = FALSE){
   n_1 = dim(A_list)[1]
   n_2 = dim(A_list)[2]
   L = dim(A_list)[3]
@@ -105,11 +112,107 @@ online_cpd_multi <- function(A_list, tau_factor, h_kernel = 0.1, rank = 10, verb
       # each column is a sample
       Z = matrix(runif(M_t * L, 0, 1), nrow = M_t, ncol = L)
       
-      D_K_t[s] = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / (1/s^0.5 + 1/(t-s)^0.5) / log(max(c(n_1, n_2, t)))^0.5
+      rescale = (1/n_left^0.5 + 1/n_right^0.5) * log(max(c(n_1, n_2, t)))^0.5
+      if (directed){
+        D_K_t[s] = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale
+      }
+      else{
+        D_K_t[s] = get_D_K_t_ud_cpp(P_left, P_right, Z, Sigma) / rescale
+      }
+      
     }
     
     
     s_max = which.max(D_K_t)
+    D_K_t_max_rescale[t] = max(D_K_t) 
+    
+    if (D_K_t_max_rescale[t] > tau_factor){
+      return (list(t = t, D_K_t_max_rescale = D_K_t_max_rescale, find = TRUE))
+    }
+    
+    if (verbose){
+      print(t)
+    }
+  }  
+  # didn't find a t with D_t exceeding tau_factor
+  return (list(t = t, D_K_t_max_rescale = D_K_t_max_rescale, find = FALSE))
+}
+
+
+
+
+
+frobenius_diff <- function(A, B){
+  return(sum((A - B)^2)^0.5)
+}
+
+
+max_D_s_t_rescale_fixed_multi <- function(A_list, rank = 10, verbose = FALSE){
+  n_1 = dim(A_list)[1]
+  n_2 = dim(A_list)[2]
+  L = dim(A_list)[3]
+  TT = dim(A_list)[4]
+  
+  D_K_t_max_rescale = rep(0, TT)
+  
+  
+  for (t in 2:TT){
+    D_K_t = rep(0, t)
+    
+    for (s in 1:(t - 1)){
+      
+      A_sum_left = apply(A_list[ , , , c(1:s)], c(1,2,3), sum)
+      A_sum_right = apply(A_list[ , , , c(min(s+1, t):t)], c(1,2,3), sum)
+      
+      n_left = s
+      n_right = t - s
+      
+      P_left = multiness(A_sum_left / n_left, rank)
+      P_right = multiness(A_sum_right / n_right, rank)
+      
+      rescale = (1/n_left^0.5 + 1/n_right^0.5) * log(max(c(n_1, n_2, t)))^0.5
+      
+      D_K_t[s] = frobenius_diff(P_left, P_right) / rescale
+    }
+    
+    D_K_t_max_rescale[t] = max(D_K_t)
+    if (verbose){
+      print(t) 
+    }
+  }
+  return(max(D_K_t_max_rescale))
+}
+
+online_cpd_fixed_multi <- function(A_list, tau_factor, rank = 10, verbose = FALSE){
+  n_1 = dim(A_list)[1]
+  n_2 = dim(A_list)[2]
+  L = dim(A_list)[3]
+  TT = dim(A_list)[4]
+  
+  D_K_t_max_rescale = rep(0, TT)
+  
+  
+  for (t in 2:TT){
+    
+    D_K_t = rep(0, t)
+    
+    for (s in 1:(t - 1)){
+      
+      A_sum_left = apply(A_list[ , , , c(1:s)], c(1,2,3), sum)
+      A_sum_right = apply(A_list[ , , , c(min(s+1, t):t)], c(1,2,3), sum)
+      
+      n_left = s
+      n_right = t - s
+      
+      P_left = multiness(A_sum_left / n_left, rank)
+      P_right = multiness(A_sum_right / n_right, rank)
+      
+      rescale = (1/n_left^0.5 + 1/n_right^0.5) * log(max(c(n_1, n_2, t)))^0.5
+      
+      D_K_t[s] = frobenius_diff(P_left, P_right) / rescale
+      
+    }
+    
     D_K_t_max_rescale[t] = max(D_K_t) 
     
     if (D_K_t_max_rescale[t] > tau_factor){

@@ -60,7 +60,9 @@ for(ind_n in 1:length(n_grid))
       }
       
       for (layer in 1: L){
-        A[, , layer] = matrix(rbinom(matrix(1,n,n),matrix(1,n,n),P_true[ , , layer]),n,n)
+        Al = matrix(rbinom(matrix(1,n,n), matrix(1,n,n), P_true[ , , layer]),n,n)
+        Al[upper.tri(Al)] = t(Al)[upper.tri(Al)]
+        A[, , layer] = Al
       }
       
       Y.tensor =  as.tensor(A)
@@ -180,7 +182,9 @@ for(ind_n in 1:length(n_grid))
       }
       
       for (layer in 1: L){
-        A[, , layer] = matrix(rbinom(matrix(1,n,n),matrix(1,n,n),P_true[ , , layer]),n,n)
+        Al = matrix(rbinom(matrix(1,n,n), matrix(1,n,n), P_true[ , , layer]),n,n)
+        Al[upper.tri(Al)] = t(Al)[upper.tri(Al)]
+        A[, , layer] = Al
       }
       
       Y.tensor =  as.tensor(A)

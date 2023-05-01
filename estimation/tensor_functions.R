@@ -1,56 +1,3 @@
-#### data generation ####
-
-#' generate a tensor
-#' @param n_1 dimension 1 of the tensor
-#' @param n_2 dimension 2 of the tensor
-#' @param d dimension of the latent space
-#' @param L dimension 3 of the tensor, i.e., number of layers
-#' @return (n_1, n_2, L)-shaped tensor
-#' @export 
-generate_tensor_dirichlet <- function(n_1, n_2, L, W,
-                                      dirichlet_x, dirichlet_y){
-  # n_1 = dim_[1]
-  # n_2 = dim_[2]
-  # d = dim_[3]
-  # L = dim_[4]
-  dim_ = c(n_1, n_2, L)
-  A = array(NA,dim_)
-  probability = array(NA,dim_)
-  
-  for (layer in 1: L)
-  {
-    temp_1 = rdirichlet(n_1, dirichlet_x)
-    temp_2 = rdirichlet(n_2, dirichlet_y)
-    P =  temp_1  %*% W[, , layer] %*% t(temp_2)
-    probability[, , layer] = P
-    
-    A[, , layer] = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), probability[ , , layer]),n_1,n_2)
-  }
-  hat.rank =c(10,10,10)
-  
-  Y.tensor =  as.tensor(A)
-  
-  return(list(Y.tensor = Y.tensor, probability = probability, hat.rank = hat.rank))
-}
-
-
-generate_tensor_probability <- function(n_1, n_2, L, probability){
-  
-  dim_ = c(n_1, n_2, L)
-  A = array(NA,dim_)
-  
-  for (layer in 1: L)
-  {
-    A[, , layer] = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), probability[ , , layer]),n_1,n_2)
-  }
-  hat.rank =c(10,10,10)
-  
-  Y.tensor =  as.tensor(A)
-  
-  return(list(Y.tensor = Y.tensor, probability = probability, hat.rank = hat.rank))
-}
-
-
 
 
 #### utils ####
@@ -104,14 +51,14 @@ HOSVD_test <- function(Y){
 
 
 
-Tensor_Hetero_PCA_test <- function(Y, r){
+Tensor_Hetero_PCA_test <- function(Y, r, tmax = 20){
   
   p = dim(Y)
   d = length(p)
   U_0 = list()
   for (i in 1:d){
     MY = k_unfold(Y, i)@data
-    MY_Hetero_PCA = Hetero_PCA_test(MY %*% t(MY), r[i])
+    MY_Hetero_PCA = Hetero_PCA_test(MY %*% t(MY), r[i], tmax)
     U_0 = c(U_0, list(MY_Hetero_PCA))
   }
   return(U_0)
@@ -120,24 +67,28 @@ Tensor_Hetero_PCA_test <- function(Y, r){
 
 
 
-Hetero_PCA_test <- function(Y, r, tmax, vartol){
-  try(if(missing("tmax")) tmax = 20)
-  try(if(missing("vartol")) vartol = 1e-6)
-  
+Hetero_PCA_test <- function(Y, r, tmax = 20, vartol = 1e-6){
+
   N_t = Y
   r = min(c(r, dim(N_t)))
-  diag(N_t) = 0
   U_t = matrix(NA, nrow = dim(Y)[1], r)
   t = 1
   approx = -1
-  
-  while(t<tmax){ # Stop criterion: convergence or maximum number of iteration reached
-    temp = svd(N_t) 
+
+  while(t <= tmax){ # Stop criterion: convergence or maximum number of iteration reached
+    temp = svd(N_t)
     U_t = temp$u[,1:r]
-    tilde_N_test_t = temp$u[,1:r] %*% diag(temp$d[1:r]) %*% t(temp$v[,1:r])
-    N_test_new =   N_t 
+    V_t = temp$v[,1:r]
+    if (r > 1){
+      tilde_N_test_t = U_t %*% diag(temp$d[1:r]) %*% t(V_t)
+    }
+    else{
+      tilde_N_test_t = temp$d[1] * U_t %*% t(V_t)
+    }
+
+    N_test_new = N_t
     diag(N_test_new) = diag(tilde_N_test_t)
-    N_t =  N_test_new
+    N_t = N_test_new
     svector = diag(tilde_N_test_t)
     if (abs(sum(svector^2) - approx) > vartol){
       t = t+1
@@ -150,6 +101,23 @@ Hetero_PCA_test <- function(Y, r, tmax, vartol){
   return(U_t)
 }
 
+
+
+
+my_hosvd <- function(Y, r){
+  
+  p = dim(Y)
+  d = length(p)
+  U_0 = list()
+  for (i in 1:d){
+    MY = k_unfold(Y, i)@data
+    A = MY %*% t(MY)
+    temp = svd(A) 
+    U_t = temp$u[, 1:r[i]]
+    U_0 = c(U_0, list(U_t))
+  }
+  return(U_0)
+}
 
 
 
@@ -243,8 +211,8 @@ estimate_flex <- function(A, dim_latent, TT = 200, eta_u = 5e-4,
 }
 
 
-estimate_thpca <- function(Y.tensor, hat.rank){
-  U.hat = Tensor_Hetero_PCA_test(Y.tensor, hat.rank)
+estimate_thpca <- function(Y.tensor, hat.rank, tmax = 20){
+  U.hat = Tensor_Hetero_PCA_test(Y.tensor, hat.rank, tmax)
   P.U1 = U.hat[[1]]%*%t(U.hat[[1]])
   P.U2 = U.hat[[2]]%*%t(U.hat[[2]])
   P.U3 = U.hat[[3]]%*%t(U.hat[[3]])
@@ -258,8 +226,15 @@ estimate_thpca <- function(Y.tensor, hat.rank){
   return(P_hat)
 }
 
+
 estimate_hosvd <- function(Y.tensor, hat.rank){
-  U.hat = rTensor::hosvd(Y.tensor, hat.rank)$U
+  dy = dim(Y.tensor)
+  for (i in 1:3){
+    hat.rank[i] = min(hat.rank[i], dy[i])
+  }
+  
+  # U.hat = rTensor::hosvd(Y.tensor, hat.rank)$U
+  U.hat = my_hosvd(Y.tensor, hat.rank)
   P.U1 = U.hat[[1]]%*%t(U.hat[[1]])
   P.U2 = U.hat[[2]]%*%t(U.hat[[2]])
   P.U3 = U.hat[[3]]%*%t(U.hat[[3]])
@@ -288,6 +263,7 @@ estimate_hooi <- function(Y.tensor, hat.rank){
   
   return(P_hat_1)
 }
+
 
 estimate_svd <- function(A, hat.rank){
   L = dim(A)[3]
@@ -318,8 +294,14 @@ uase <- function(A_tensor, rank){
   dim =dim(Y.tensor)
   Y.matrix = t(cs_unfold(Y.tensor, 1)@data)
   temp.Y = my_svd(Y.matrix)
-  xhat.Y =  temp.Y$u[,1:rank] %*%  diag( sqrt(temp.Y$d[1:rank]) )
-  yhat.Y =  temp.Y$v[,1:rank] %*%  diag( sqrt(temp.Y$d[1:rank]) )
+  if (rank > 1){
+    xhat.Y =  temp.Y$u[,1:rank] %*%  diag( sqrt(temp.Y$d[1:rank]) )
+    yhat.Y =  temp.Y$v[,1:rank] %*%  diag( sqrt(temp.Y$d[1:rank]) )  
+  }
+  else{
+    xhat.Y =  sqrt(temp.Y$d[1]) * temp.Y$u[,1:rank]
+    yhat.Y =  sqrt(temp.Y$d[1]) * temp.Y$v[,1:rank]
+  }
   
   probability.uase = xhat.Y %*% t(yhat.Y) 
   

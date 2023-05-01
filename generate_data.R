@@ -6,24 +6,36 @@
 #' @return (n_1, n_2, L)-shaped tensor
 #' @export 
 generate_tensor_dirichlet <- function(n_1, n_2, L, W,
-                                      dirichlet_x, dirichlet_y){
+                                      dirichlet_x, dirichlet_y, directed = TRUE){
   dim_ = c(n_1, n_2, L)
   A = array(NA,dim_)
   probability = array(NA,dim_)
   
-  for (layer in 1: L)
-  {
-    temp_1 = rdirichlet(n_1, dirichlet_x)
-    temp_2 = rdirichlet(n_2, dirichlet_y)
-    P =  temp_1  %*% W[, , layer] %*% t(temp_2)
-    probability[, , layer] = P
-    
-    A[, , layer] = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), probability[ , , layer]),n_1,n_2)
+  if (directed){
+    for (layer in 1: L)
+    {
+      temp_1 = rdirichlet(n_1, dirichlet_x)
+      temp_2 = rdirichlet(n_2, dirichlet_y)
+      P =  temp_1  %*% W[, , layer] %*% t(temp_2)
+      probability[, , layer] = P
+      
+      A[, , layer] = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), probability[ , , layer]),n_1,n_2)
+    }
+  }
+  else{
+    for (layer in 1: L)
+    {
+      temp_1 = rdirichlet(n_1, dirichlet_x)
+      P =  temp_1  %*% W[, , layer] %*% t(temp_1)
+      probability[, , layer] = P
+      
+      Al = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), probability[ , , layer]),n_1,n_2)
+      Al[upper.tri(Al)] = t(Al)[upper.tri(Al)]
+      
+      A[, , layer] = Al
+    }
   }
   
-  # Y.tensor =  as.tensor(A)
-  # hat.rank =c(10,10,10)
-  # return(list(Y.tensor = Y.tensor, probability = probability, hat.rank = hat.rank))
   return(A)
 }
 
@@ -58,13 +70,13 @@ get_dirichlet_params <- function(n_1, n_2, L, d){
 
 
 
-get_data_burn_dirichlet <- function(T_burn, n_1, n_2, L, dirichlet_xy_1, W_1){
+get_data_burn_dirichlet <- function(T_burn, n_1, n_2, L, dirichlet_xy_1, W_1, directed = TRUE){
   ### data for burn-in ####
   A_burn = array(0, c(n_1, n_2, L, T_burn))
   for (t in 1:T_burn){
     A_burn[, , , t] =  generate_tensor_dirichlet(n_1, n_2, L, W_1,
-                                                 dirichlet_x = dirichlet_xy_1$x, 
-                                                 dirichlet_y = dirichlet_xy_1$y)
+                                                 dirichlet_x = dirichlet_xy_1$x,
+                                                 dirichlet_y = dirichlet_xy_1$y, directed)
   }
   
   return(A_burn)
@@ -73,24 +85,27 @@ get_data_burn_dirichlet <- function(T_burn, n_1, n_2, L, dirichlet_xy_1, W_1){
 
 
 
-get_data_cp_dirichlet <- function(TT, cp_truth, n_1, n_2, L, dirichlet_xy_1, W_1, dirichlet_xy_2, W_2){
+get_data_cp_dirichlet <- function(TT, cp_truth, n_1, n_2, L, dirichlet_xy_1, W_1, dirichlet_xy_2, W_2, directed = TRUE){
   ### data with cp ####
 
   A_list = array(0, c(n_1, n_2, L, TT))
   for (t in 1:cp_truth){
     A_list[, , , t] = generate_tensor_dirichlet(n_1, n_2,  L, W_1,
-                                                dirichlet_x = dirichlet_xy_1$x, 
-                                                dirichlet_y = dirichlet_xy_1$y)
+                                                dirichlet_x = dirichlet_xy_1$x,
+                                                dirichlet_y = dirichlet_xy_1$y, directed)
   }
   for (t in (cp_truth + 1):TT){
     A_list[, , , t] = generate_tensor_dirichlet(n_1, n_2, L, W_2,
                                                 dirichlet_x = dirichlet_xy_2$x, 
-                                                dirichlet_y = dirichlet_xy_2$y)
+                                                dirichlet_y = dirichlet_xy_2$y, directed)
   }
 
   return(A_list)
 }
 
+
+
+#### sbm ####
 
 
 get_sbm_params <- function(n, L){
@@ -119,7 +134,65 @@ get_sbm_params <- function(n, L){
 
 
 
-generate_tensor_probability <- function(n_1, n_2, L, probability){
+
+get_data_burn_sbm <- function(T_burn, n, L, probability_mat, rand_pos = FALSE){
+
+  A_burn = array(0, c(n, n, L, T_burn))
+  for (t in 1:T_burn){
+    A_burn[, , , t] = generate_tensor_probability(n, n, L, probability_mat, rand_pos)
+  }
+  
+  return(A_burn)
+}
+
+
+
+
+get_data_cp_sbm <- function(TT, cp_truth, n, L, probability_1, probability_2, rand_pos = FALSE){
+  #### data with cp
+  A_list = array(0, c(n, n, L, TT))
+  for (t in 1:cp_truth){
+    A_list[, , , t] = generate_tensor_probability(n, n, L, probability_1, rand_pos)
+  }
+  for (t in (cp_truth + 1):TT){
+    A_list[, , , t] = generate_tensor_probability(n, n, L, probability_2, rand_pos)
+  }
+  
+  return(A_list)
+}
+
+
+
+
+#### sbm undirected
+#### n_1 must be equal to n_2
+generate_tensor_probability <- function(n_1, n_2, L, probability, rand_pos = FALSE){
+  n = n_1
+  dim_ = c(n, n, L)
+  A = array(NA,dim_)
+  ix = sample(1:n, n, replace = FALSE)
+  
+  for (layer in 1: L)
+  {
+    Al = matrix(rbinom(matrix(1,n,n), matrix(1,n,n), probability[ , , layer]),n,n)
+    Al[upper.tri(Al)] = t(Al)[upper.tri(Al)]
+    
+    if (rand_pos){
+      Al = Al[ix, ix]
+    }
+    
+    A[, , layer] = Al
+  }
+  # Y.tensor =  as.tensor(A)
+  # hat.rank =c(10,10,10)
+  # return(list(Y.tensor = Y.tensor, probability = probability, hat.rank = hat.rank))
+  return(A)
+}
+
+
+
+#### sbm directed
+generate_tensor_probability_directed <- function(n_1, n_2, L, probability){
   
   dim_ = c(n_1, n_2, L)
   A = array(NA,dim_)
@@ -133,32 +206,5 @@ generate_tensor_probability <- function(n_1, n_2, L, probability){
   # hat.rank =c(10,10,10)
   # return(list(Y.tensor = Y.tensor, probability = probability, hat.rank = hat.rank))
   return(A)
-}
-
-
-get_data_burn_sbm <- function(T_burn, n, L, probability_mat){
-
-  A_burn = array(0, c(n, n, L, T_burn))
-  for (t in 1:T_burn){
-    A_burn[, , , t] = generate_tensor_probability(n, n, L, probability_mat)
-  }
-  
-  return(A_burn)
-}
-
-
-
-
-get_data_cp_sbm <- function(TT, cp_truth, n, L, probability_1, probability_2){
-  #### data with cp
-  A_list = array(0, c(n, n, L, TT))
-  for (t in 1:cp_truth){
-    A_list[, , , t] = generate_tensor_probability(n, n, L, probability_1)
-  }
-  for (t in (cp_truth + 1):TT){
-    A_list[, , , t] = generate_tensor_probability(n, n, L, probability_2)
-  }
-  
-  return(A_list)
 }
 

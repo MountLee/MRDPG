@@ -1,30 +1,34 @@
+
+#### local ####
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+# source("../generate_data.R")
+source("../simulation_wrap.R")
+Rcpp::sourceCpp("../cpd_hpca.cpp")
+Rcpp::sourceCpp("../cpd_uase.cpp")
+source("../other_methods.R")
 
-library("rTensor")
-library("STATSVD")
-library("Rlab")
-library("ggplot2")
-library("egg")
 
-library(multiness)
+#### main ####
+
 library(mvtnorm)
 library(dirmult)
-library(STATSVD)
-
-library(devtools)
-library(gStream)
-library(changepoints)
-
-
-source("tensor_functions.R")
-
-library(ggplot2)
+library(rTensor)
+library(Rcpp)
 library(tictoc)
 
+library(multiness)
+library(gStream)
 
-help(paste)
+library(egg)
+library(ggplot2)
 
-path = ""
+
+
+
+#### data preprocess ####
+
+
+path = "air_transportation/"
 
 data_whole_22 = read.csv(paste(c(path, "Air Transportation_2022.csv"), collapse =  ""), header = T) 
 data_whole_22$MONTH  = 202200 + data_whole_22$MONTH 
@@ -119,6 +123,12 @@ for (u in 1:TT){
 }
 
 
+
+
+
+
+#### burn-in ####
+
 B = 100
 
 K_max = 500
@@ -127,41 +137,35 @@ T_burn = 30
 
 TT_list = TT  - T_burn
 
-  
+
 h_kernel = (K_max*log(TT_list*n_1 * n_2)/(TT_list*n_1*n_2))^{1/L}
 h_kernel 
 
-  
-
 hat.rank = rep(10, 3)
+
+
 max_D_rescale_B = rep(0, B)
 max_D_rescale_B_thpca = rep(0, B)
 max_D_rescale_B_uase = rep(0, B)
-max_D_rescale_B_multi = rep(0, B)
-alpha = 0.05
+# max_D_rescale_B_multi = rep(0, B)
 
 tic()
-
-
-
-S_tilde_p = c(rep(0, n_1 + n_2 - 1))
-
-for (p in 1:(n_2)){
-  S_tilde_p[p] = min(n_1, n_2 + 1 - p)
-}
-for (p in (n_2 + 1):(n_2 + n_1 - 1)){
-  S_tilde_p[p] = min(n_2, n_2 + n_1 - p)
-}
 
 set.seed(0) 
 
 for(b in 1:B){
   b_ix = sample(1:T_burn, replace = FALSE)
   A_b = data_month_product_tensor[, , , b_ix]
-  max_D_rescale_B[b] = max_D_s_t_rescale(A_b, h_kernel, verbose = FALSE)
-  max_D_rescale_B_thpca[b] = max_D_s_t_rescale_thpca(A_b, h_kernel, hat.rank, verbose = FALSE)
-  max_D_rescale_B_uase[b] = max_D_s_t_rescale_uase(A_b, h_kernel, hat.rank[1], verbose = FALSE)
-  max_D_rescale_B_multi[b] = max_D_s_t_rescale_multi(A_b, h_kernel, hat.rank[1], verbose = FALSE)
+  
+  A_b_list = list()
+  for (t in 1:T_burn){
+    A_b_list[[t]] = A_b[, , , t]
+  }
+  
+  max_D_rescale_B[b] = max(max_D_s_t_rescale_fixed_cpp(A_b_list, verbose = FALSE))
+  max_D_rescale_B_thpca[b] = max(max_D_s_t_rescale_fixed_thpca_cpp(A_b_list, hat.rank, verbose = FALSE))
+  max_D_rescale_B_uase[b] = max(max_D_s_t_rescale_fixed_uase_cpp(A_b_list, hat.rank[1], verbose = FALSE))
+  # max_D_rescale_B_multi[b] = max_D_s_t_rescale_multi(A_b, h_kernel, hat.rank[1], verbose = FALSE)
   print(paste0("b = ", b))
 }
 toc()
@@ -169,18 +173,30 @@ toc()
 
 
 
+alpha = 0.05
+
 tau_factor = quantile(max_D_rescale_B, 1 - alpha, type = 1)
 tau_factor_thpca = quantile(max_D_rescale_B_thpca, 1 - alpha, type = 1)
 tau_factor_uase = quantile(max_D_rescale_B_uase, 1 - alpha, type = 1)
-tau_factor_multi = quantile(max_D_rescale_B_multi, 1 - alpha, type = 1)
+# tau_factor_multi = quantile(max_D_rescale_B_multi, 1 - alpha, type = 1)
+
+
+
+#### online cpd ####
 
 
 A_list  =  data_month_product_tensor[, , , (T_burn+1) : TT]
 
-result_online_cpd = online_cpd(A_list, tau_factor, h_kernel,  verbose = FALSE)
-result_online_cpd_thpca = online_cpd_thpca(A_list, tau_factor, h_kernel, hat.rank, verbose = FALSE)
-result_online_cpd_uase = online_cpd_uase(A_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
-result_online_cpd_multi = online_cpd_uase(A_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
+A_list_list = list()
+for (t in 1:TT_list){
+  A_list_list[[t]] = A_list[, , , t]
+}
+
+
+result_online_cpd = online_cpd_fixed_cpp(A_list_list, tau_factor, verbose = FALSE)
+result_online_cpd_thpca = online_cpd_fixed_thpca_cpp(A_list_list, tau_factor, hat.rank, verbose = FALSE)
+result_online_cpd_uase = online_cpd_fixed_uase_cpp(A_list_list, tau_factor, hat.rank[1], verbose = FALSE)
+# result_online_cpd_multi = online_cpd_multi(A_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
 
 
 k_nn = 3
@@ -211,7 +227,7 @@ min(t_hat)
 month_time[T_burn + result_online_cpd$t]
 month_time[T_burn + result_online_cpd_thpca$t]
 month_time[T_burn + result_online_cpd_uase$t]
-month_time[T_burn + result_online_cpd_multi$t]
+# month_time[T_burn + result_online_cpd_multi$t]
 month_time[T_burn +min(t_hat)]
 
 
