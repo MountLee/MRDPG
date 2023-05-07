@@ -102,7 +102,7 @@ for(b in 1:B){
   max_D_rescale_B[b] = max(max_D_s_t_rescale_cpp(A_b_list, h_kernel, hat.rank, verbose = FALSE))
   max_D_rescale_B_thpca[b] = max(max_D_s_t_rescale_thpca_cpp(A_b_list, h_kernel, hat.rank, verbose = FALSE))
   max_D_rescale_B_uase[b] = max(max_D_s_t_rescale_uase_cpp(A_b_list, h_kernel, hat.rank[1], verbose = FALSE))
-  # max_D_rescale_B_multi[b] = max_D_s_t_rescale_multi(A_b, h_kernel, hat.rank[1], verbose = FALSE)
+  max_D_rescale_B_multi[b] = max(max_D_s_t_rescale_multi(A_b, h_kernel, hat.rank[1], verbose = FALSE))
   print(paste0("b = ", b))
 }
 toc()
@@ -111,7 +111,7 @@ toc()
 tau_factor = quantile(max_D_rescale_B, 1 - alpha, type = 1)
 tau_factor_thpca = quantile(max_D_rescale_B_thpca, 1 - alpha, type = 1)
 tau_factor_uase = quantile(max_D_rescale_B_uase, 1 - alpha, type = 1)
-# tau_factor_multi = quantile(max_D_rescale_B_multi, 1 - alpha, type = 1)
+tau_factor_multi = quantile(max_D_rescale_B_multi, 1 - alpha, type = 1)
 
 
 A_list  =  data_year_product_tensor[, , , (T_burn+1) : time]
@@ -124,9 +124,9 @@ for (t in 1:TT){
 
 
 result_online_cpd = online_cpd_cpp(A_list_list, tau_factor, h_kernel, hat.rank, verbose = FALSE)
-result_online_cpd_thpca = online_cpd_thpca_cpp(A_list_list, tau_factor, h_kernel, hat.rank, verbose = FALSE)
-result_online_cpd_uase = online_cpd_uase_cpp(A_list_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
-# result_online_cpd_multi = online_cpd_uase_cpp(A_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
+result_online_cpd_thpca = online_cpd_thpca_cpp(A_list_list, tau_factor_thpca, h_kernel, hat.rank, verbose = FALSE)
+result_online_cpd_uase = online_cpd_uase_cpp(A_list_list, tau_factor_uase, h_kernel, hat.rank[1], verbose = FALSE)
+result_online_cpd_multi = online_cpd_multi(A_list, tau_factor_multi, h_kernel, hat.rank[1], verbose = FALSE)
 
 
 k_nn = 3
@@ -156,5 +156,5 @@ min(t_hat)
 data_names[T_burn + result_online_cpd$t]
 data_names[T_burn + result_online_cpd_thpca$t]
 data_names[T_burn + result_online_cpd_uase$t]
-# data_names[T_burn + result_online_cpd_multi$t]
+data_names[T_burn + result_online_cpd_multi$t]
 data_names[T_burn +min(t_hat)]

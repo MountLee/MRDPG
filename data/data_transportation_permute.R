@@ -65,13 +65,13 @@ data_airport_id = read.csv(paste(c(path, "L_AIRPORT_ID.csv"), collapse =  ""), h
 
 
 ORIGIN_AIRPORT = rle(sort(data_whole[,2]))
-og_id_100 = ORIGIN_AIRPORT$value[order(ORIGIN_AIRPORT$lengths, decreasing = T)[1:75]]
+og_id_100 = ORIGIN_AIRPORT$value[order(ORIGIN_AIRPORT$lengths, decreasing = T)[1:50]]
 
 ORIGIN_AIRPORT_names = data_airport_id$Description[data_airport_id$Code %in% og_id_100]
 
 
 DEST_AIRPORT = rle(sort(data_whole[,4]))
-de_id_100 = DEST_AIRPORT$value[order(DEST_AIRPORT$lengths, decreasing = T)[1:75]]
+de_id_100 = DEST_AIRPORT$value[order(DEST_AIRPORT$lengths, decreasing = T)[1:50]]
 DEST_AIRPORT_names = data_airport_id$Description[data_airport_id$Code %in% de_id_100]
 
 og_id_100_nan = data_airport_id$Description[data_airport_id$Code %in%  og_id_100[which(! og_id_100 %in% de_id_100)]]
@@ -162,7 +162,7 @@ hat.rank = rep(10, 3)
 max_D_rescale_B = rep(0, B)
 max_D_rescale_B_thpca = rep(0, B)
 max_D_rescale_B_uase = rep(0, B)
-# max_D_rescale_B_multi = rep(0, B)
+max_D_rescale_B_multi = rep(0, B)
 
 tic()
 
@@ -177,10 +177,10 @@ for(b in 1:B){
     A_b_list[[t]] = A_b[, , , t]
   }
   
-  max_D_rescale_B[b] = max(max_D_s_t_rescale_cpp(A_b_list, h_kernel, verbose = FALSE))
+  max_D_rescale_B[b] = max(max_D_s_t_rescale_cpp(A_b_list, h_kernel, hat.rank, verbose = FALSE))
   max_D_rescale_B_thpca[b] = max(max_D_s_t_rescale_thpca_cpp(A_b_list, h_kernel, hat.rank, verbose = FALSE))
   max_D_rescale_B_uase[b] = max(max_D_s_t_rescale_uase_cpp(A_b_list, h_kernel, hat.rank[1], verbose = FALSE))
-  # max_D_rescale_B_multi[b] = max_D_s_t_rescale_multi(A_b, h_kernel, hat.rank[1], verbose = FALSE)
+  max_D_rescale_B_multi[b] = max(max_D_s_t_rescale_multi(A_b, h_kernel, hat.rank[1], verbose = FALSE))
   print(paste0("b = ", b))
 }
 toc()
@@ -193,7 +193,7 @@ alpha = 0.05
 tau_factor = quantile(max_D_rescale_B, 1 - alpha, type = 1)
 tau_factor_thpca = quantile(max_D_rescale_B_thpca, 1 - alpha, type = 1)
 tau_factor_uase = quantile(max_D_rescale_B_uase, 1 - alpha, type = 1)
-# tau_factor_multi = quantile(max_D_rescale_B_multi, 1 - alpha, type = 1)
+tau_factor_multi = quantile(max_D_rescale_B_multi, 1 - alpha, type = 1)
 
 
 
@@ -208,10 +208,10 @@ for (t in 1:TT_list){
 }
 
 
-result_online_cpd = online_cpd_cpp(A_list_list, tau_factor, h_kernel,  verbose = FALSE)
-result_online_cpd_thpca = online_cpd_thpca_cpp(A_list_list, tau_factor, h_kernel, hat.rank, verbose = FALSE)
-result_online_cpd_uase = online_cpd_uase_cpp(A_list_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
-# result_online_cpd_multi = online_cpd_multi(A_list, tau_factor, h_kernel, hat.rank[1], verbose = FALSE)
+result_online_cpd = online_cpd_cpp(A_list_list, tau_factor, h_kernel, hat.rank, verbose = FALSE)
+result_online_cpd_thpca = online_cpd_thpca_cpp(A_list_list, tau_factor_thpca, h_kernel, hat.rank, verbose = FALSE)
+result_online_cpd_uase = online_cpd_uase_cpp(A_list_list, tau_factor_uase, h_kernel, hat.rank[1], verbose = FALSE)
+result_online_cpd_multi = online_cpd_multi(A_list, tau_factor_multi, h_kernel, hat.rank[1], verbose = FALSE)
 
 
 k_nn = 3
@@ -242,7 +242,7 @@ min(t_hat)
 month_time[T_burn + result_online_cpd$t]
 month_time[T_burn + result_online_cpd_thpca$t]
 month_time[T_burn + result_online_cpd_uase$t]
-# month_time[T_burn + result_online_cpd_multi$t]
+month_time[T_burn + result_online_cpd_multi$t]
 month_time[T_burn +min(t_hat)]
 
 
