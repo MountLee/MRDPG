@@ -413,7 +413,7 @@ double get_D_K_t_ud_cpp(cube P_left,
 
 // [[Rcpp::export]]
 vec max_D_s_t_rescale_cpp(field<cube> A_list, double h_kernel, uvec r_hat, const bool directed = true, 
-                          const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                          const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -486,13 +486,13 @@ vec max_D_s_t_rescale_cpp(field<cube> A_list, double h_kernel, uvec r_hat, const
         P_left = hosvd_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hosvd_pca_estimate_cpp(A_bar_right, r_hat);
         
-        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 * std::max(n_max, t))), 0.5 * L);
+        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 / alpha * std::max(n_max, t))), 0.5 * L);
         M_t = std::min(static_cast<int>(M_td), M_up);
         
         // each column is a sample
         Z = mat(M_t, L, fill::randu);
         
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(n_max, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(n_max, t + 1)), 0.5);
         
         if (directed){
           D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale;
@@ -520,7 +520,7 @@ vec max_D_s_t_rescale_cpp(field<cube> A_list, double h_kernel, uvec r_hat, const
 
 // [[Rcpp::export]]
 List online_cpd_cpp(field<cube> A_list, double tau_factor, double h_kernel, uvec r_hat, const bool directed = true, 
-                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -593,13 +593,13 @@ List online_cpd_cpp(field<cube> A_list, double tau_factor, double h_kernel, uvec
         P_left = hosvd_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hosvd_pca_estimate_cpp(A_bar_right, r_hat);
         
-        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 * std::max(n_max, t))), 0.5 * L);
+        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 / alpha * std::max(n_max, t))), 0.5 * L);
         M_t = std::min(static_cast<int>(M_td), M_up);
         
         // each column is a sample
         Z = mat(M_t, L, fill::randu);
         
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(n_max, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(n_max, t + 1)), 0.5);
 
         if (directed){
           D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale;
@@ -647,7 +647,7 @@ Fixed latent positions
 
 // [[Rcpp::export]]
 vec max_D_s_t_rescale_fixed_cpp(field<cube> A_list, uvec r_hat,
-                          const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                          const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -707,7 +707,7 @@ vec max_D_s_t_rescale_fixed_cpp(field<cube> A_list, uvec r_hat,
         P_left = hosvd_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hosvd_pca_estimate_cpp(A_bar_right, r_hat);
         
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(t0, t + 1)), 0.5);
         
         D_K_t(s) = frobenius_cube_cpp(P_left - P_right) / rescale;
       }
@@ -727,7 +727,7 @@ vec max_D_s_t_rescale_fixed_cpp(field<cube> A_list, uvec r_hat,
 
 // [[Rcpp::export]]
 List online_cpd_fixed_cpp(field<cube> A_list, double tau_factor, uvec r_hat,
-                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -787,7 +787,7 @@ List online_cpd_fixed_cpp(field<cube> A_list, double tau_factor, uvec r_hat,
         P_left = hosvd_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hosvd_pca_estimate_cpp(A_bar_right, r_hat);
         
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(t0, t + 1)), 0.5);
         
         D_K_t(s) = frobenius_cube_cpp(P_left - P_right) / rescale;
       }
@@ -940,7 +940,7 @@ cube hetero_pca_estimate_cpp(cube& Y, uvec r_hat){
 
 // [[Rcpp::export]]
 vec max_D_s_t_rescale_thpca_cpp(field<cube> A_list, double h_kernel, uvec r_hat, const bool directed = true, 
-                                const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                                const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -1013,13 +1013,13 @@ vec max_D_s_t_rescale_thpca_cpp(field<cube> A_list, double h_kernel, uvec r_hat,
         P_left = hetero_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hetero_pca_estimate_cpp(A_bar_right, r_hat);
         
-        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 * std::max(n_max, t))), 0.5 * L);
+        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 / alpha * std::max(n_max, t))), 0.5 * L);
         M_t = std::min(static_cast<int>(M_td), M_up);
         
         // each column is a sample
         Z = mat(M_t, L, fill::randu);
         
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(n_max, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(n_max, t + 1)), 0.5);
         
         if (directed){
           D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale;
@@ -1047,7 +1047,7 @@ vec max_D_s_t_rescale_thpca_cpp(field<cube> A_list, double h_kernel, uvec r_hat,
 
 // [[Rcpp::export]]
 List online_cpd_thpca_cpp(field<cube> A_list, double tau_factor, double h_kernel, uvec r_hat, const bool directed = true, 
-                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -1120,14 +1120,14 @@ List online_cpd_thpca_cpp(field<cube> A_list, double tau_factor, double h_kernel
         P_left = hetero_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hetero_pca_estimate_cpp(A_bar_right, r_hat);
         
-        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 * std::max(n_max, t))), 0.5 * L);
+        M_td = C_M * pow((static_cast<double>(t) * n_min) / ( 2.0 * L * L * log(1.0 / alpha * std::max(n_max, t))), 0.5 * L);
         M_t = std::min(static_cast<int>(M_td), M_up);
         
         // each column is a sample
         Z = mat(M_t, L, fill::randu);
         
         // rescale = (1.0/pow(static_cast<double>(s), 0.5) + 1.0/pow(static_cast<double>(t - s), 0.5)) / pow(log(1.0 * std::max(n_max, t)), 0.5);
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(n_max, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(n_max, t + 1)), 0.5);
         
         if (directed){
           D_K_t(s) = get_D_K_t_cpp(P_left, P_right, Z, Sigma) / rescale;
@@ -1174,7 +1174,7 @@ Fixed latent positions
 
 // [[Rcpp::export]]
 vec max_D_s_t_rescale_fixed_thpca_cpp(field<cube> A_list, uvec r_hat, 
-                                const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                                const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -1235,7 +1235,7 @@ vec max_D_s_t_rescale_fixed_thpca_cpp(field<cube> A_list, uvec r_hat,
         P_right = hetero_pca_estimate_cpp(A_bar_right, r_hat);
         
         // rescale = (1.0/pow(static_cast<double>(s), 0.5) + 1.0/pow(static_cast<double>(t - s), 0.5)) / pow(log(1.0 * std::max(n_max, t)), 0.5);
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(t0, t + 1)), 0.5);
         
         D_K_t(s) = frobenius_cube_cpp(P_left - P_right) / rescale;
       }
@@ -1255,7 +1255,7 @@ vec max_D_s_t_rescale_fixed_thpca_cpp(field<cube> A_list, uvec r_hat,
 
 // [[Rcpp::export]]
 List online_cpd_fixed_thpca_cpp(field<cube> A_list, double tau_factor, uvec r_hat, 
-                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false){
+                    const uword buffer_left = 0, const uword buffer_right = 0, const bool verbose = false, const double alpha = 0.01){
   cube A = A_list(0);
   
   const uword n1 = A.n_rows;
@@ -1315,7 +1315,7 @@ List online_cpd_fixed_thpca_cpp(field<cube> A_list, double tau_factor, uvec r_ha
         P_left = hetero_pca_estimate_cpp(A_bar_left, r_hat);
         P_right = hetero_pca_estimate_cpp(A_bar_right, r_hat);
         
-        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 * std::max(t0, t + 1)), 0.5);
+        rescale = (1.0/pow(n_left, 0.5) + 1.0/pow(n_right, 0.5)) * pow(log(1.0 / alpha * std::max(t0, t + 1)), 0.5);
         
         D_K_t(s) = frobenius_cube_cpp(P_left - P_right) / rescale;
 

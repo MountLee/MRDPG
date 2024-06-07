@@ -59,6 +59,7 @@ for(ind_n_1 in 1:length(n_grid_X)){
         for(iter  in 1:NMC){ 
           A = array(NA,dim)
           P_true = array(NA,dim)
+          A_list = list()
           
           for (layer in 1: L){
             temp_1 = rdirichlet(n_1, rep(1, d))
@@ -67,6 +68,7 @@ for(ind_n_1 in 1:length(n_grid_X)){
             P_true[, , layer] = P
             
             A[, , layer] = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), P_true[ , , layer]),n_1,n_2)
+            A_list[[layer]] = matrix(rbinom(matrix(1,n_1,n_2),matrix(1,n_1,n_2), P_true[ , , layer]),n_1,n_2)
           }
           
           Y.tensor =  as.tensor(A)
@@ -86,11 +88,11 @@ for(ind_n_1 in 1:length(n_grid_X)){
           P_hat_5 = uase(Y.tensor, hat.rank[1] ) 
           result_uase[ind_n_1, ind_n_2, ind_L, ind_d, iter] = frobenius(P_hat_5, P_true)
           
-          P_hat_7 = multiness_adaptive(A, hat.rank[1])
-          result_MultiNeSS_ada[ind_n_1, ind_n_2, ind_L, ind_d, iter] = frobenius(P_hat_7, P_true)
+          P_hat_6 = multiness_adaptive(A, hat.rank[1])
+          result_MultiNeSS_ada[ind_n_1, ind_n_2, ind_L, ind_d, iter] = frobenius(P_hat_6, P_true)
           
-          P_hat_8 = estimate_flex(A, hat.rank[1])
-          result_flex[ind_n_1, ind_n_2, ind_L, ind_d, iter] = frobenius(P_hat_8, P_true)
+          P_hat_7 = estimate_flex(A, hat.rank[1])
+          result_flex[ind_n_1, ind_n_2, ind_L, ind_d, iter] = frobenius(P_hat_7, P_true)
           
         }
         

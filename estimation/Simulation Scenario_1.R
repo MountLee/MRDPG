@@ -1,10 +1,14 @@
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+####setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+# install.packages("rARPACK")
+
 library(mvtnorm)
 library(STATSVD)
 library(changepoints)
 library(egg)
 library(ggplot2)
 library(multiness)
+library(rTensor)
+# library(rMultiNet)
 source("tensor_functions.R")
 
 
@@ -21,10 +25,12 @@ hat.rank =c(10,10,10)
 result_hooi = array(NA, c( length(n_grid), length(L_grid), NMC))
 result_hetero = array(NA, c( length(n_grid), length(L_grid), NMC))
 result_hosvd = array(NA, c( length(n_grid), length(L_grid), NMC))
-result_svd =   array(NA, c( length(n_grid), length(L_grid), NMC))
-result_uase =   array(NA, c( length(n_grid), length(L_grid), NMC))
-result_MultiNeSS_ada =   array(NA, c( length(n_grid), length(L_grid), NMC))
-result_flex =   array(NA, c( length(n_grid), length(L_grid), NMC))
+result_svd = array(NA, c( length(n_grid), length(L_grid), NMC))
+result_uase = array(NA, c( length(n_grid), length(L_grid), NMC))
+result_MultiNeSS_ada = array(NA, c( length(n_grid), length(L_grid), NMC))
+result_flex = array(NA, c( length(n_grid), length(L_grid), NMC))
+result_mase = array(NA, c( length(n_grid), length(L_grid), NMC))
+result_twist = array(NA, c( length(n_grid), length(L_grid), NMC))
 
 for(ind_n in 1:length(n_grid))
 {
@@ -46,7 +52,7 @@ for(ind_n in 1:length(n_grid))
       
       A = array(NA,dim)
       P_true = array(NA,dim)
-      
+      A_list = list()
       for (layer in 1: L)
       {
         p_1 =  runif(1, prob[2*L +layer], prob[2*L+layer+1])
@@ -63,6 +69,8 @@ for(ind_n in 1:length(n_grid))
         Al = matrix(rbinom(matrix(1,n,n), matrix(1,n,n), P_true[ , , layer]),n,n)
         Al[upper.tri(Al)] = t(Al)[upper.tri(Al)]
         A[, , layer] = Al
+        
+        A_list[[layer]] = Al
       }
       
       Y.tensor =  as.tensor(A)
@@ -83,16 +91,25 @@ for(ind_n in 1:length(n_grid))
       P_hat_5 = uase(Y.tensor, hat.rank[1] ) 
       result_uase[ind_n, ind_L,  iter] = frobenius(P_hat_5, P_true)
       
-      P_hat_7 = multiness_adaptive(A, hat.rank[1])
-      result_MultiNeSS_ada[ind_n, ind_L,  iter] = frobenius(P_hat_7, P_true)
+      P_hat_6 = multiness_adaptive(A, hat.rank[1])
+      result_MultiNeSS_ada[ind_n, ind_L,  iter] = frobenius(P_hat_6, P_true)
       
-      P_hat_8 = estimate_flex(A, hat.rank[1], TT = 500, eta_u = 1e-4, eta_a = 1e-4, eta_l = 1e-4)
-      result_flex[ind_n, ind_L,  iter] = frobenius(P_hat_8, P_true)
-       }
+      P_hat_7 = estimate_flex(A, hat.rank[1], TT = 500, eta_u = 1e-4, eta_a = 1e-4, eta_l = 1e-4)
+      result_flex[ind_n, ind_L,  iter] = frobenius(P_hat_7, P_true)
+      
+      P_hat_8 = estimate_mase(A, A_list, hat.rank[1])
+      result_mase[ind_n, ind_L,  iter] = frobenius(P_hat_8, P_true)
+      
+      P_hat_9 = estimate_twist(Y.tensor, hat.rank)
+      result_twist[ind_n, ind_L,  iter] = frobenius(P_hat_9, P_true)
+      
+      }
          
     }
   
 }
+
+
 
 
 value= c( apply(result_hooi, c(1,2), mean),
@@ -101,7 +118,10 @@ value= c( apply(result_hooi, c(1,2), mean),
           apply(result_svd, c(1,2), mean),
           apply(result_uase, c(1,2), mean), 
           apply(result_MultiNeSS_ada, c(1,2), mean),
-          apply(result_flex, c(1,2), mean))
+          apply(result_flex, c(1,2), mean),
+          apply(result_mase, c(1,2), mean),
+          apply(result_twist, c(1,2), mean)
+          )
 # value
 
 
@@ -111,12 +131,16 @@ sd = c( apply(result_hooi, c(1,2), sd),
         apply(result_svd, c(1,2), sd),
         apply(result_uase, c(1,2), sd),
         apply(result_MultiNeSS_ada, c(1,2), sd),
-        apply(result_flex, c(1,2), sd))
+        apply(result_flex, c(1,2), sd),
+        apply(result_mase, c(1,2), sd),
+        apply(result_twist, c(1,2), sd)
+        )
 # sd
 
-layer = rep(c(10,20,30,40), times = 7)
+layer = rep(c(10,20,30,40), times = 9)
 
-Method = rep(c('HOOI','TH-PCA','HOSVD','SASE','UASE', 'COA', 'MLE'),each = 4) 
+Method = rep(c('HOOI', 'TH-PCA', 'HOSVD', 'SASE', 'UASE', 'COA', 'MLE', 'MASE', 'TWIST'),each = 4) 
+color_list = c("#66c2a5", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#737373", "#484B8A", "#C35817")
 
 df_1 = data.frame( layer = layer, Method = Method, value = value, sd = sd)
 
@@ -125,7 +149,7 @@ plot_1 = ggplot(data = df_1, mapping = aes(x = layer, y = value, colour = Method
     geom_point()+ 
    geom_errorbar(aes(ymin=value-sd, ymax= value+sd), width= 2)+
   labs( y ="Estimation error", x = "Number of layers")+
-  scale_color_manual(values = c("#66c2a5", "#8da0cb", "#e78ac3","#a6d854", "#ffd92f", "#e5c494", "#737373"))+
+  scale_color_manual(values = color_list)+
   theme_classic()
                                                                                                                   
 # plot_1
@@ -149,6 +173,8 @@ result_svd =   array(NA, c( length(n_grid), length(L_grid), NMC))
 result_uase =   array(NA, c( length(n_grid), length(L_grid), NMC))
 result_MultiNeSS_ada =   array(NA, c( length(n_grid), length(L_grid), NMC))
 result_flex =   array(NA, c( length(n_grid), length(L_grid), NMC))
+result_mase =   array(NA, c( length(n_grid), length(L_grid), NMC))
+result_twist =   array(NA, c( length(n_grid), length(L_grid), NMC))
 
 for(ind_n in 1:length(n_grid))
 {
@@ -168,6 +194,7 @@ for(ind_n in 1:length(n_grid))
     for(iter  in 1:NMC){
       A = array(NA,dim)
       P_true = array(NA,dim)
+      A_list = list()
       
       set.seed(n*L*iter)
       for (layer in 1: L){
@@ -185,6 +212,8 @@ for(ind_n in 1:length(n_grid))
         Al = matrix(rbinom(matrix(1,n,n), matrix(1,n,n), P_true[ , , layer]),n,n)
         Al[upper.tri(Al)] = t(Al)[upper.tri(Al)]
         A[, , layer] = Al
+        
+        A_list[[layer]] = Al
       }
       
       Y.tensor =  as.tensor(A)
@@ -205,11 +234,18 @@ for(ind_n in 1:length(n_grid))
       P_hat_5 = uase(Y.tensor, hat.rank[1] ) 
       result_uase[ind_n, ind_L,  iter] = frobenius(P_hat_5, P_true)
       
-      P_hat_7 = multiness_adaptive(A, hat.rank[1])
-      result_MultiNeSS_ada[ind_n, ind_L,  iter] = frobenius(P_hat_7, P_true)
+      P_hat_6 = multiness_adaptive(A, hat.rank[1])
+      result_MultiNeSS_ada[ind_n, ind_L,  iter] = frobenius(P_hat_6, P_true)
       
-      P_hat_8 = estimate_flex(A, hat.rank[1], TT = 500, eta_u = 1e-4, eta_a = 1e-4, eta_l = 1e-4)
-      result_flex[ind_n, ind_L,  iter] = frobenius(P_hat_8, P_true)
+      P_hat_7 = estimate_flex(A, hat.rank[1], TT = 500, eta_u = 1e-4, eta_a = 1e-4, eta_l = 1e-4)
+      result_flex[ind_n, ind_L,  iter] = frobenius(P_hat_7, P_true)
+      
+      P_hat_8 = estimate_mase(A, A_list, hat.rank[1])
+      result_mase[ind_n, ind_L,  iter] = frobenius(P_hat_8, P_true)
+      
+      P_hat_9 = estimate_twist(Y.tensor, hat.rank)
+      result_twist[ind_n, ind_L,  iter] = frobenius(P_hat_9, P_true)
+      
     }
     
   }
@@ -223,8 +259,12 @@ value= c( apply(result_hooi, c(1,2), mean),
           apply(result_svd, c(1,2), mean),
           apply(result_uase, c(1,2), mean), 
           apply(result_MultiNeSS_ada, c(1,2), mean),
-          apply(result_flex, c(1,2), mean))
+          apply(result_flex, c(1,2), mean),
+          apply(result_mase, c(1,2), mean),
+          apply(result_twist, c(1,2), mean)
+)
 # value
+
 
 sd = c( apply(result_hooi, c(1,2), sd),
         apply(result_hetero, c(1,2), sd),
@@ -232,12 +272,16 @@ sd = c( apply(result_hooi, c(1,2), sd),
         apply(result_svd, c(1,2), sd),
         apply(result_uase, c(1,2), sd),
         apply(result_MultiNeSS_ada, c(1,2), sd),
-        apply(result_flex, c(1,2), sd))
+        apply(result_flex, c(1,2), sd),
+        apply(result_mase, c(1,2), sd),
+        apply(result_twist, c(1,2), sd)
+)
 # sd
 
-nodes = rep(c(50,100,150,200), times = 7)
+nodes = rep(c(50, 100, 150, 200), times = 9)
 
-Method = rep(c('HOOI','TH-PCA','HOSVD','SASE','UASE',  'COA', 'MLE'),each = 4) 
+Method = rep(c('HOOI', 'TH-PCA', 'HOSVD', 'SASE', 'UASE', 'COA', 'MLE', 'MASE', 'TWIST'),each = 4) 
+color_list = c("#66c2a5", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#737373", "#484B8A", "#C35817")
 
 df_2 = data.frame( nodes = nodes, Method = Method, value = value, sd = sd)
 
@@ -248,7 +292,7 @@ plot_2 = ggplot(data = df_2, mapping = aes(x = nodes, y = value, colour = Method
   geom_point()+ 
   geom_errorbar(aes(ymin=value-sd, ymax= value+sd), width= 10)+
   labs( y ="Estimation error", x = "Number of nodes")+
-  scale_color_manual(values = c("#66c2a5", "#8da0cb", "#e78ac3","#a6d854", "#ffd92f","#e5c494", "#737373"))+
+  scale_color_manual(values = color_list)+
   theme_classic()
 
 

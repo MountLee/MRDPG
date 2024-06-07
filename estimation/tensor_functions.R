@@ -1,6 +1,6 @@
-
-
-#### utils ####
+# install.packages("igraph")
+# source("E:/R_code/cpd_MRDPG/MRDPG-main/mase-master/R/loadAll.R")
+source("~/R_code/MRDPG-main/mase-master/R/loadAll.R")
 
 frobenius <- function(A, B){
   return (sum((A - B)^2)^0.5)
@@ -283,8 +283,17 @@ estimate_svd <- function(A, hat.rank){
 }
 
 
-
-
+estimate_mase <- function(A, A_list, hat.rank){
+  L = dim(A)[3]
+  P_hat_5 = array(NA, dim(A))
+  temp = mase(A_list, hat.rank)
+  V = temp$V
+  for (layer in 1: L){
+    R1 =  temp$R[[layer]]
+    P_hat_5[, , layer] = V %*% R1 %*% t(V)
+  }
+  return(P_hat_5)
+}
 
 
 
@@ -388,4 +397,130 @@ multiness <- function(A_tensor, rank){
   return(probability.multi)
 }
 
+
+
+
+#### TWIST
+# this is a simple copy-paste from github repo https://github.com/ChenyuzZZ73/rMultiNet, 
+# but the annoying progress-bar and messages are removed
+
+InitializationMMSBM <- function(tnsr, m, k, rank = NULL) {
+  if (is.null(rank)) {
+    rank = m * k - m + 1
+  }
+  ranks = c(rank, rank, m)
+  num_modes <- tnsr@num_modes
+  U_list <- vector("list", num_modes)
+  temp_mat <- matrix(0, ncol = tnsr@modes[1], nrow = tnsr@modes[2])
+  for (i in 1:tnsr@modes[3]) {
+    temp_mat = temp_mat + tnsr@data[, , i]
+  }
+  U_list[[1]] <- eigen(temp_mat, symmetric = T)$vector[, c(1:ranks[1])]
+  U_list[[2]] <- U_list[[1]]
+  outer_production = NULL
+  for (i in 1:dim(U_list[[1]])[1]) {
+    row_matrix = NULL
+    for (j in 1:dim(U_list[[1]])[2]) {
+      temp = U_list[[1]][i, j] * U_list[[2]]
+      row_matrix = cbind(row_matrix, temp)
+    }
+    outer_production = rbind(outer_production, row_matrix)
+  }
+  temp_mat <- rs_unfold(tnsr, m = 3)@data %*% outer_production
+  U_list[[3]] <- svd(temp_mat, nu = ranks[3])$u
+  return(U_list)
+}
+
+
+norm_vec <- function(x) sqrt(sum(x^2))
+reg_vec <- function(x,delta) min(delta,norm_vec(x))/norm_vec(x)*x
+
+PowerIteration <- function(tnsr, m, k, rank = NULL, type = "TWIST", U_0_list,
+                           delta1 = 1000, delta2 = 1000, max_iter = 5, tol = 1e-05) {
+  if (is.null(rank)) {
+    rank = m * k - m + 1
+  }
+  ranks = c(rank, rank, m)
+  if (sum(ranks > tnsr@modes) != 0)
+    stop("ranks must be smaller than the corresponding mode")
+  if (sum(ranks <= 0) != 0)
+    stop("ranks must be positive")
+  if (type == "TWIST") {
+    num_modes <- tnsr@num_modes
+    U_list <- U_0_list
+    tnsr_norm <- fnorm(tnsr)
+    curr_iter <- 1
+    converged <- FALSE
+    fnorm_resid <- rep(0, max_iter)
+    CHECK_CONV <- function(Z, U_list) {
+      est <- ttl(Z, U_list, ms = 1:num_modes)
+      curr_resid <- fnorm(tnsr - est)
+      fnorm_resid[curr_iter] <<- curr_resid
+      if (curr_iter == 1)
+        return(FALSE)
+      if (abs(curr_resid - fnorm_resid[curr_iter - 1])/tnsr_norm < tol){
+        return(TRUE)
+      } else {
+        return(FALSE)
+      }
+    }
+    # pb <- txtProgressBar(min = 0, max = max_iter, style = 3)
+    while ((curr_iter < max_iter) && (!converged)) {
+      # message("iteration", curr_iter, "\n")
+      # setTxtProgressBar(pb, curr_iter)
+      modes <- tnsr@modes
+      modes_seq <- 1:num_modes
+      U_list_reg = U_list
+      for (m in modes_seq) {
+        if (m == 1 | m == 2) {
+          U_list_reg[[m]] = t(apply(U_list_reg[[m]],
+                                    1, reg_vec, delta = delta1))
+        }
+        if (m == 3) {
+          U_list_reg[[m]] = t(apply(U_list_reg[[m]],
+                                    1, reg_vec, delta = delta2))
+        }
+      }
+      for (m in modes_seq) {
+        X <- ttl(tnsr, lapply(U_list_reg[-m], t), ms = modes_seq[-m])
+        U_list[[m]] <- svd(rs_unfold(X, m = m)@data,
+                           nu = ranks[m])$u
+      }
+      Z <- ttm(X, mat = t(U_list[[num_modes]]), m = num_modes)
+      if (CHECK_CONV(Z, U_list)) {
+        converged <- TRUE
+        # setTxtProgressBar(pb, max_iter)
+      } else {
+        curr_iter <- curr_iter + 1
+      }
+    }
+    # close(pb)
+    fnorm_resid <- fnorm_resid[fnorm_resid != 0]
+    norm_percent <- (1 - (tail(fnorm_resid, 1)/tnsr_norm)) *
+      100
+    est <- ttl(Z, U_list, ms = 1:num_modes)
+    invisible(list(Z = Z, U = U_list, conv = converged, est = est,
+                   norm_percent = norm_percent, fnorm_resid = tail(fnorm_resid,
+                                                                   1), all_resids = fnorm_resid))
+    network_embedding <- U_list[[3]]
+    node_embedding <- U_list[[1]]
+    return(list(Z, network_embedding, node_embedding))
+  }
+  if (type == "TUCKER") {
+    decomp = tucker(tnsr, ranks, max_iter = 10000, tol = 1e-05)
+    node_embedding = decomp[["U"]][[1]]
+    network_embedding = decomp[["U"]][[3]]
+    Z = decomp[["Z"]]
+    return(list(Z, network_embedding, node_embedding))
+  }
+}
+
+estimate_twist <- function(Y.tensor, hat.rank, layers){
+  U_list = InitializationMMSBM(Y.tensor, layers, hat.rank[1], rank = hat.rank[1])
+  res = PowerIteration(Y.tensor, layers, hat.rank[1], rank = hat.rank[1], 
+                       type="TWIST", U_0_list=U_list, delta1=1000, delta2=1000, max_iter=25, tol=1e-05)
+  
+  P_hat = ttm(ttm(ttm(res[[1]], res[[3]], 1), res[[3]], 2), res[[2]], 3)@data
+  return(P_hat)
+}
 
