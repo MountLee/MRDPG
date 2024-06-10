@@ -1,6 +1,6 @@
 # install.packages("igraph")
-# source("E:/R_code/cpd_MRDPG/MRDPG-main/mase-master/R/loadAll.R")
 source("~/R_code/MRDPG-main/mase-master/R/loadAll.R")
+
 
 frobenius <- function(A, B){
   return (sum((A - B)^2)^0.5)
@@ -71,6 +71,7 @@ Hetero_PCA_test <- function(Y, r, tmax = 20, vartol = 1e-6){
 
   N_t = Y
   r = min(c(r, dim(N_t)))
+  diag(N_t) = 0
   U_t = matrix(NA, nrow = dim(Y)[1], r)
   t = 1
   approx = -1
@@ -297,6 +298,10 @@ estimate_mase <- function(A, A_list, hat.rank){
 
 
 
+
+
+
+
 uase <- function(A_tensor, rank){
   
   Y.tensor = A_tensor
@@ -402,7 +407,7 @@ multiness <- function(A_tensor, rank){
 
 #### TWIST
 # this is a simple copy-paste from github repo https://github.com/ChenyuzZZ73/rMultiNet, 
-# but the annoying progress-bar and messages are removed
+# but the annoying progress-bar and messages have been removed
 
 InitializationMMSBM <- function(tnsr, m, k, rank = NULL) {
   if (is.null(rank)) {
@@ -458,9 +463,10 @@ PowerIteration <- function(tnsr, m, k, rank = NULL, type = "TWIST", U_0_list,
       fnorm_resid[curr_iter] <<- curr_resid
       if (curr_iter == 1)
         return(FALSE)
-      if (abs(curr_resid - fnorm_resid[curr_iter - 1])/tnsr_norm < tol){
+      if (abs(curr_resid - fnorm_resid[curr_iter - 1])/tnsr_norm <
+          tol)
         return(TRUE)
-      } else {
+      else {
         return(FALSE)
       }
     }
@@ -490,7 +496,8 @@ PowerIteration <- function(tnsr, m, k, rank = NULL, type = "TWIST", U_0_list,
       if (CHECK_CONV(Z, U_list)) {
         converged <- TRUE
         # setTxtProgressBar(pb, max_iter)
-      } else {
+      }
+      else {
         curr_iter <- curr_iter + 1
       }
     }
@@ -516,7 +523,10 @@ PowerIteration <- function(tnsr, m, k, rank = NULL, type = "TWIST", U_0_list,
 }
 
 estimate_twist <- function(Y.tensor, hat.rank, layers){
+  # U_list = InitializationMMSBM(Y.tensor, hat.rank[1], hat.rank[2], rank = hat.rank[3])
   U_list = InitializationMMSBM(Y.tensor, layers, hat.rank[1], rank = hat.rank[1])
+  # res = PowerIteration(Y.tensor, hat.rank[1], hat.rank[2], rank = hat.rank[3], 
+  #                     type="TWIST", U_0_list=U_list, delta1=1000, delta2=1000, max_iter=25, tol=1e-05)
   res = PowerIteration(Y.tensor, layers, hat.rank[1], rank = hat.rank[1], 
                        type="TWIST", U_0_list=U_list, delta1=1000, delta2=1000, max_iter=25, tol=1e-05)
   

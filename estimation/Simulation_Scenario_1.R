@@ -11,7 +11,6 @@ library(rTensor)
 # library(rMultiNet)
 source("tensor_functions.R")
 
-
 #### fix n, vary L ####
 
 n_grid  =  c(100)
@@ -100,7 +99,7 @@ for(ind_n in 1:length(n_grid))
       P_hat_8 = estimate_mase(A, A_list, hat.rank[1])
       result_mase[ind_n, ind_L,  iter] = frobenius(P_hat_8, P_true)
       
-      P_hat_9 = estimate_twist(Y.tensor, hat.rank)
+      P_hat_9 = estimate_twist(Y.tensor, hat.rank, L)
       result_twist[ind_n, ind_L,  iter] = frobenius(P_hat_9, P_true)
       
       }
@@ -112,37 +111,41 @@ for(ind_n in 1:length(n_grid))
 
 
 
-value= c( apply(result_hooi, c(1,2), mean),
-          apply(result_hetero, c(1,2), mean),
+value= c( apply(result_hetero, c(1,2), mean),
           apply(result_hosvd, c(1,2), mean),
+          apply(result_hooi, c(1,2), mean),
+          apply(result_twist, c(1,2), mean),
           apply(result_svd, c(1,2), mean),
           apply(result_uase, c(1,2), mean), 
-          apply(result_MultiNeSS_ada, c(1,2), mean),
-          apply(result_flex, c(1,2), mean),
           apply(result_mase, c(1,2), mean),
-          apply(result_twist, c(1,2), mean)
-          )
+          apply(result_flex, c(1,2), mean),
+          apply(result_MultiNeSS_ada, c(1,2), mean)
+)
 # value
 
 
-sd = c( apply(result_hooi, c(1,2), sd),
-        apply(result_hetero, c(1,2), sd),
+sd = c( apply(result_hetero, c(1,2), sd),
         apply(result_hosvd, c(1,2), sd),
+        apply(result_hooi, c(1,2), sd),
+        apply(result_twist, c(1,2), sd),
         apply(result_svd, c(1,2), sd),
         apply(result_uase, c(1,2), sd),
-        apply(result_MultiNeSS_ada, c(1,2), sd),
-        apply(result_flex, c(1,2), sd),
         apply(result_mase, c(1,2), sd),
-        apply(result_twist, c(1,2), sd)
+        apply(result_flex, c(1,2), sd),
+        apply(result_MultiNeSS_ada, c(1,2), sd)
         )
 # sd
 
 layer = rep(c(10,20,30,40), times = 9)
 
-Method = rep(c('HOOI', 'TH-PCA', 'HOSVD', 'SASE', 'UASE', 'COA', 'MLE', 'MASE', 'TWIST'),each = 4) 
-color_list = c("#66c2a5", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#737373", "#484B8A", "#C35817")
-
+Method = rep(c('TH-PCA', 'HOSVD', 'HOOI','TWIST', 'SASE', 'UASE','MASE', 'MLE','COA' ),each = 4) 
 df_1 = data.frame( layer = layer, Method = Method, value = value, sd = sd)
+
+df_1$Method <- factor(df_1$Method, levels = c('TH-PCA', 'HOSVD', 'HOOI','TWIST', 'SASE', 'UASE','MASE', 'MLE','COA'))
+
+# Define the colors, making sure to name them in the same order as the factor levels
+color_list <- setNames(c("#66c2a5", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#737373", "#484B8A", "#C35817"),
+                       levels(df_1$Method))
 
 plot_1 = ggplot(data = df_1, mapping = aes(x = layer, y = value, colour = Method)) +
     geom_line() + 
@@ -243,7 +246,7 @@ for(ind_n in 1:length(n_grid))
       P_hat_8 = estimate_mase(A, A_list, hat.rank[1])
       result_mase[ind_n, ind_L,  iter] = frobenius(P_hat_8, P_true)
       
-      P_hat_9 = estimate_twist(Y.tensor, hat.rank)
+      P_hat_9 = estimate_twist(Y.tensor, hat.rank, L)
       result_twist[ind_n, ind_L,  iter] = frobenius(P_hat_9, P_true)
       
     }
@@ -253,37 +256,42 @@ for(ind_n in 1:length(n_grid))
 }
 
 
-value= c( apply(result_hooi, c(1,2), mean),
-          apply(result_hetero, c(1,2), mean),
+value= c( apply(result_hetero, c(1,2), mean),
           apply(result_hosvd, c(1,2), mean),
+          apply(result_hooi, c(1,2), mean),
+          apply(result_twist, c(1,2), mean),
           apply(result_svd, c(1,2), mean),
           apply(result_uase, c(1,2), mean), 
-          apply(result_MultiNeSS_ada, c(1,2), mean),
-          apply(result_flex, c(1,2), mean),
           apply(result_mase, c(1,2), mean),
-          apply(result_twist, c(1,2), mean)
+          apply(result_flex, c(1,2), mean),
+          apply(result_MultiNeSS_ada, c(1,2), mean)
 )
 # value
 
 
-sd = c( apply(result_hooi, c(1,2), sd),
-        apply(result_hetero, c(1,2), sd),
+sd = c( apply(result_hetero, c(1,2), sd),
         apply(result_hosvd, c(1,2), sd),
+        apply(result_hooi, c(1,2), sd),
+        apply(result_twist, c(1,2), sd),
         apply(result_svd, c(1,2), sd),
         apply(result_uase, c(1,2), sd),
-        apply(result_MultiNeSS_ada, c(1,2), sd),
-        apply(result_flex, c(1,2), sd),
         apply(result_mase, c(1,2), sd),
-        apply(result_twist, c(1,2), sd)
+        apply(result_flex, c(1,2), sd),
+        apply(result_MultiNeSS_ada, c(1,2), sd)
 )
 # sd
 
 nodes = rep(c(50, 100, 150, 200), times = 9)
 
-Method = rep(c('HOOI', 'TH-PCA', 'HOSVD', 'SASE', 'UASE', 'COA', 'MLE', 'MASE', 'TWIST'),each = 4) 
-color_list = c("#66c2a5", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#737373", "#484B8A", "#C35817")
+Method = rep(c('TH-PCA', 'HOSVD', 'HOOI','TWIST', 'SASE', 'UASE','MASE', 'MLE','COA' ),each = 4) 
 
 df_2 = data.frame( nodes = nodes, Method = Method, value = value, sd = sd)
+
+df_2$Method <- factor(df_1$Method, levels = c('TH-PCA', 'HOSVD', 'HOOI','TWIST', 'SASE', 'UASE','MASE', 'MLE','COA'))
+
+# Define the colors, making sure to name them in the same order as the factor levels
+color_list <- setNames(c("#66c2a5", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#737373", "#484B8A", "#C35817"),
+                       levels(df_1$Method))
 
 
 
@@ -302,4 +310,4 @@ plot_2 = ggplot(data = df_2, mapping = aes(x = nodes, y = value, colour = Method
 
 ggarrange(plot_1, plot_2, ncol = 2)
 
-dev.copy2pdf(file=paste("scenario_1_sbm.pdf",sep = ''),width = 8,height = 2.5)
+dev.copy2pdf(file=paste("/Users/chris/Desktop/MRDPG-main/estimation/scenario_1_sbm.pdf",sep = ''),width = 8,height = 2.75)
